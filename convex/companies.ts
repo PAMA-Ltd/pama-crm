@@ -4,6 +4,7 @@ import {
   companyResultValidator,
   createCompanyArgs,
 } from "./companyModel";
+import { requireCrmUser } from "./authz";
 
 const MAX_LIST_LIMIT = 500;
 const DEFAULT_LIST_LIMIT = 250;
@@ -45,6 +46,8 @@ export const list = query({
   },
   returns: v.array(companyResultValidator),
   handler: async (ctx, args) => {
+    await requireCrmUser(ctx);
+
     const limit = Math.min(
       Math.max(Math.floor(args.limit ?? DEFAULT_LIST_LIMIT), 1),
       MAX_LIST_LIMIT,
@@ -52,7 +55,19 @@ export const list = query({
 
     const companies = await ctx.db.query("companies").order("desc").take(limit);
 
-    return companies.map(({ normalizedName: _normalizedName, ...company }) => company);
+    return companies.map((company) => ({
+      _id: company._id,
+      _creationTime: company._creationTime,
+      name: company.name,
+      tags: company.tags,
+      owner: company.owner,
+      openDeals: company.openDeals,
+      pipelineValue: company.pipelineValue,
+      winProbability: company.winProbability,
+      trend: company.trend,
+      lastInteraction: company.lastInteraction,
+      logo: company.logo,
+    }));
   },
 });
 
@@ -60,6 +75,7 @@ export const create = mutation({
   args: createCompanyArgs,
   returns: v.id("companies"),
   handler: async (ctx, args) => {
+    const identity = await requireCrmUser(ctx);
     validateCompanyInput(args);
 
     const name = args.name.trim();
@@ -80,6 +96,7 @@ export const create = mutation({
       ...args,
       name,
       normalizedName,
+      createdBy: identity.subject,
       openDeals: Math.round(args.openDeals),
       pipelineValue: Math.round(args.pipelineValue),
       winProbability: Math.round(args.winProbability),

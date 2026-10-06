@@ -1,10 +1,9 @@
 "use client";
 
-import Avatar from "@/components/_ui/avatar";
+import { UserButton, useUser } from "@clerk/nextjs";
 import Button from "@/components/_ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/_ui/tabs";
 import Notifications from "./notifications/notifications";
-import { CURRENT_USER } from "@/data/companies";
 import { useCompaniesStore } from "@/stores/companies-store";
 import MenuIcon from "@/public/assets/images/_common/menu.svg";
 import ActiveDot from "@/public/assets/images/companies/header/active-dot.svg";
@@ -17,11 +16,11 @@ const TABS = [
 ];
 
 export default function CompaniesHeader() {
+  const { user } = useUser();
   const activeTab = useCompaniesStore((state) => state.activeTab);
   const setActiveTab = useCompaniesStore((state) => state.setActiveTab);
   const setSidebarOpen = useCompaniesStore((state) => state.setSidebarOpen);
   const setSearchOpen = useCompaniesStore((state) => state.setSearchOpen);
-  const openProfile = useCompaniesStore((state) => state.openProfile);
 
   return (
     <header className="shrink-0">
@@ -54,16 +53,14 @@ export default function CompaniesHeader() {
             <SearchIcon aria-hidden className="size-3.5" />
           </Button>
           <Notifications />
-          <Button
-            variant="secondary"
-            size="none"
-            className="caption-style h-[30px] gap-1.5 py-[5px] pr-[7px] pl-[5px] font-normal"
-            aria-label={`Open profile for ${CURRENT_USER.name}`}
-            onClick={() => openProfile(CURRENT_USER.name)}
-          >
-            <Avatar src={CURRENT_USER.avatar} alt="" />
-            <span className="hidden sm:inline">{CURRENT_USER.name}</span>
-          </Button>
+          <div className="caption-style border-border bg-card flex h-[30px] items-center gap-1.5 rounded-md border py-[4px] pr-[7px] pl-[4px]">
+            <UserButton />
+            <span className="hidden max-w-[140px] truncate sm:inline">
+              {user?.fullName ??
+                user?.primaryEmailAddress?.emailAddress ??
+                "Account"}
+            </span>
+          </div>
         </div>
       </div>
 

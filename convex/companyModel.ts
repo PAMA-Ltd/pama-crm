@@ -22,6 +22,7 @@ export const lastInteractionValidator = v.object({
 export const companyFields = {
   name: v.string(),
   normalizedName: v.string(),
+  createdBy: v.string(),
   tags: v.array(companyTagValidator),
   owner: v.string(),
   openDeals: v.number(),
