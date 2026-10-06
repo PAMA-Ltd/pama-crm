@@ -8,7 +8,7 @@ on:
       - ".github/workflows/verify-convex-once.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
@@ -25,12 +25,13 @@ jobs:
       - name: Install dependencies and refresh lockfile
         run: npm install --ignore-scripts
 
-      - name: Generate Convex types
+      - name: Generate Convex types without production auth config
         env:
           CONVEX_AGENT_MODE: anonymous
-          CLERK_JWT_ISSUER_DOMAIN: https://example.clerk.accounts.dev
         run: |
-          npx convex codegen --typecheck disable || npx convex dev --once
+          mv convex/auth.config.ts /tmp/auth.config.ts
+          npx convex dev --once
+          mv /tmp/auth.config.ts convex/auth.config.ts
 
       - name: Typecheck
         run: npx tsc --noEmit
@@ -38,13 +39,52 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Upload generated metadata
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: convex-generated-metadata
-          path: |
-            package-lock.json
-            convex/_generated/
-            convex/tsconfig.json
-          if-no-files-found: warn
+      - name: Commit generated metadata through GitHub REST API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          HEAD_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$GITHUB_REF_NAME" --jq .object.sha)"
+          BASE_TREE="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$HEAD_SHA" --jq .tree.sha)"
+
+          create_blob() {
+            local file="$1"
+            local encoded
+            encoded="$(base64 -w 0 "$file")"
+            jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}' |
+              gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq .sha
+          }
+
+          LOCK_SHA="$(create_blob package-lock.json)"
+          API_DTS_SHA="$(create_blob convex/_generated/api.d.ts)"
+          API_JS_SHA="$(create_blob convex/_generated/api.js)"
+          DATA_MODEL_SHA="$(create_blob convex/_generated/dataModel.d.ts)"
+          SERVER_DTS_SHA="$(create_blob convex/_generated/server.d.ts)"
+          SERVER_JS_SHA="$(create_blob convex/_generated/server.js)"
+          CONVEX_TSCONFIG_SHA="$(create_blob convex/tsconfig.json)"
+
+          jq -n             --arg base "$BASE_TREE"             --arg lock "$LOCK_SHA"             --arg apiDts "$API_DTS_SHA"             --arg apiJs "$API_JS_SHA"             --arg dataModel "$DATA_MODEL_SHA"             --arg serverDts "$SERVER_DTS_SHA"             --arg serverJs "$SERVER_JS_SHA"             --arg tsconfig "$CONVEX_TSCONFIG_SHA"             '{
+              base_tree:$base,
+              tree:[
+                {path:"package-lock.json",mode:"100644",type:"blob",sha:$lock},
+                {path:"convex/_generated/api.d.ts",mode:"100644",type:"blob",sha:$apiDts},
+                {path:"convex/_generated/api.js",mode:"100644",type:"blob",sha:$apiJs},
+                {path:"convex/_generated/dataModel.d.ts",mode:"100644",type:"blob",sha:$dataModel},
+                {path:"convex/_generated/server.d.ts",mode:"100644",type:"blob",sha:$serverDts},
+                {path:"convex/_generated/server.js",mode:"100644",type:"blob",sha:$serverJs},
+                {path:"convex/tsconfig.json",mode:"100644",type:"blob",sha:$tsconfig},
+                {path:".github/workflows/verify-convex-once.yml",mode:"100644",type:"blob",sha:null}
+              ]
+            }' > /tmp/tree.json
+
+          TREE_SHA="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/trees" --input /tmp/tree.json --jq .sha)"
+
+          jq -n             --arg message "chore: commit generated Convex metadata"             --arg tree "$TREE_SHA"             --arg parent "$HEAD_SHA"             '{message:$message,tree:$tree,parents:[$parent]}' > /tmp/commit.json
+
+          COMMIT_SHA="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/commits" --input /tmp/commit.json --jq .sha)"
+
+          jq -n --arg sha "$COMMIT_SHA" '{sha:$sha,force:false}' |
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$GITHUB_REF_NAME" --input -
+
+          echo "Committed generated metadata at $COMMIT_SHA"
