@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+import { useMutation } from "convex/react";
 import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
 import {
@@ -31,12 +32,11 @@ import {
   OWNERS,
   SEGMENTS,
   STAGES,
-  type Company,
   type Segment,
   type Stage,
 } from "@/data/companies";
-import { TODAY, daysSince } from "@/lib/companies";
-import { slugify } from "@/lib/utils";
+import { TODAY } from "@/lib/companies";
+import { createCompany } from "@/lib/convex/companies";
 import { useCompaniesStore } from "@/stores/companies-store";
 import PlusIcon from "@/public/assets/images/_common/plus.svg";
 
@@ -69,16 +69,18 @@ const EMPTY_FORM: FormState = {
 export default function NewCompanyDialog() {
   const open = useCompaniesStore((state) => state.newCompanyOpen);
   const setOpen = useCompaniesStore((state) => state.setNewCompanyOpen);
-  const addCompany = useCompaniesStore((state) => state.addCompany);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const create = useMutation(createCompany);
   const [nameError, setNameError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = form.name.trim();
     if (!name) {
@@ -87,24 +89,35 @@ export default function NewCompanyDialog() {
       return;
     }
 
-    const company: Company = {
-      id: `${slugify(name)}-${Date.now()}`,
-      name,
-      logo: form.logo ?? undefined,
-      tags: [form.segment, form.stage],
-      owner: form.owner,
-      openDeals: Math.max(0, Math.round(Number(form.openDeals) || 0)),
-      pipelineValue: Math.max(0, Math.round(Number(form.pipelineValue) || 0)),
-      winProbability: form.winProbability,
-      trend: DEFAULT_TREND,
-      lastInteraction: {
-        date: form.interactionDate || TODAY,
-        label: form.interactionType,
-      },
-      activityDays: daysSince(form.interactionDate || TODAY),
-    };
+    setSubmitError(null);
+    setIsSubmitting(true);
 
-    addCompany(company);
+    try {
+      await create({
+        name,
+        logo: form.logo ?? undefined,
+        tags: [form.segment, form.stage],
+        owner: form.owner,
+        openDeals: Math.max(0, Math.round(Number(form.openDeals) || 0)),
+        pipelineValue: Math.max(
+          0,
+          Math.round(Number(form.pipelineValue) || 0),
+        ),
+        winProbability: form.winProbability,
+        trend: DEFAULT_TREND,
+        lastInteraction: {
+          date: form.interactionDate || TODAY,
+          label: form.interactionType,
+        },
+      });
+      setOpen(false);
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Unable to create company.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -114,6 +127,7 @@ export default function NewCompanyDialog() {
         onCloseAutoFocus={() => {
           setForm(EMPTY_FORM);
           setNameError(null);
+          setSubmitError(null);
         }}
       >
         <form onSubmit={handleSubmit} noValidate className="flex flex-col">
@@ -315,15 +329,29 @@ export default function NewCompanyDialog() {
             </div>
           </FormSection>
 
+          {submitError && (
+            <p
+              role="alert"
+              className="caption-style text-danger px-5 pb-3"
+            >
+              {submitError}
+            </p>
+          )}
+
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="subtle" size="sm">
                 Cancel
               </Button>
             </DialogClose>
-            <Button variant="primary" size="sm" type="submit">
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              disabled={isSubmitting}
+            >
               <PlusIcon aria-hidden className="size-3" />
-              Create Company
+              {isSubmitting ? "Creating…" : "Create Company"}
             </Button>
           </DialogFooter>
         </form>

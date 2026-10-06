@@ -13,10 +13,12 @@ import type { SortKey } from "@/data/companies";
 import { TODAY, companiesCsvRows, filterCompanies } from "@/lib/companies";
 import { downloadCsv } from "@/lib/csv";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 import ShareIcon from "@/public/assets/images/companies/toolbar/share.svg";
 import PlusIcon from "@/public/assets/images/_common/plus.svg";
 
 export default function CompaniesToolbar() {
+  const { companies } = useCompanies();
   const sortBy = useCompaniesStore((state) => state.sortBy);
   const owner = useCompaniesStore((state) => state.owner);
   const stage = useCompaniesStore((state) => state.stage);
@@ -32,7 +34,6 @@ export default function CompaniesToolbar() {
   );
 
   function exportCsv() {
-    const { companies } = useCompaniesStore.getState();
     const visible = filterCompanies(companies, {
       sortBy,
       owner,

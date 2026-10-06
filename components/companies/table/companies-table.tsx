@@ -21,9 +21,10 @@ import {
 import { filterCompanies } from "@/lib/companies";
 import { cn } from "@/lib/utils";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 
 export default function CompaniesTable() {
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies, isLoading } = useCompanies();
   const sortBy = useCompaniesStore((state) => state.sortBy);
   const owner = useCompaniesStore((state) => state.owner);
   const stage = useCompaniesStore((state) => state.stage);
@@ -104,7 +105,9 @@ export default function CompaniesTable() {
                   role="cell"
                   className="caption-style text-muted-foreground col-span-full flex h-[120px] items-center justify-center"
                 >
-                  No companies match the current filters.
+                  {isLoading
+                    ? "Loading companies…"
+                    : "No companies match the current filters."}
                 </td>
               </TableRow>
             )}

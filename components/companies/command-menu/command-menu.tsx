@@ -15,12 +15,13 @@ import {
 } from "@/components/_ui/command";
 import { CommandCompanyRow, CommandTableHeader } from "./command-table";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 import PlusIcon from "@/public/assets/images/_common/plus.svg";
 
 export default function CommandMenu() {
   const open = useCompaniesStore((state) => state.searchOpen);
   const setOpen = useCompaniesStore((state) => state.setSearchOpen);
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies } = useCompanies();
   const openDetail = useCompaniesStore((state) => state.openDetail);
   const setNewCompanyOpen = useCompaniesStore(
     (state) => state.setNewCompanyOpen,
