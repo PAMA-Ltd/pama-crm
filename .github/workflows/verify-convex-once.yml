@@ -1,5 +1,4 @@
-name: Verify Convex Once
-# Final rerun after migration type fixes.
+name: Commit Convex Metadata Once
 
 on:
   push:
@@ -10,37 +9,23 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
-  verify:
+  commit-metadata:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies and refresh lockfile
-        run: npm install --ignore-scripts
-
-      - name: Generate Convex types without production auth config
+      - name: Download already-generated metadata
         env:
-          CONVEX_AGENT_MODE: anonymous
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mv convex/auth.config.ts /tmp/auth.config.ts
-          npx convex dev --once
-          mv /tmp/auth.config.ts convex/auth.config.ts
+          mkdir -p /tmp/generated
+          gh run download 37484870876             --repo "$GITHUB_REPOSITORY"             --name convex-generated-metadata             --dir /tmp/generated
 
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Commit generated metadata through GitHub REST API
+      - name: Commit metadata through GitHub REST API
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -51,19 +36,22 @@ jobs:
 
           create_blob() {
             local file="$1"
-            local encoded
-            encoded="$(base64 -w 0 "$file")"
-            jq -n --arg content "$encoded" '{content:$content,encoding:"base64"}' |
-              gh api --method POST "repos/$GITHUB_REPOSITORY/git/blobs" --input - --jq .sha
+            {
+              printf '{"content":"'
+              base64 -w 0 "$file"
+              printf '","encoding":"base64"}'
+            } > /tmp/blob.json
+
+            gh api --method POST               "repos/$GITHUB_REPOSITORY/git/blobs"               --input /tmp/blob.json               --jq .sha
           }
 
-          LOCK_SHA="$(create_blob package-lock.json)"
-          API_DTS_SHA="$(create_blob convex/_generated/api.d.ts)"
-          API_JS_SHA="$(create_blob convex/_generated/api.js)"
-          DATA_MODEL_SHA="$(create_blob convex/_generated/dataModel.d.ts)"
-          SERVER_DTS_SHA="$(create_blob convex/_generated/server.d.ts)"
-          SERVER_JS_SHA="$(create_blob convex/_generated/server.js)"
-          CONVEX_TSCONFIG_SHA="$(create_blob convex/tsconfig.json)"
+          LOCK_SHA="$(create_blob /tmp/generated/package-lock.json)"
+          API_DTS_SHA="$(create_blob /tmp/generated/convex/_generated/api.d.ts)"
+          API_JS_SHA="$(create_blob /tmp/generated/convex/_generated/api.js)"
+          DATA_MODEL_SHA="$(create_blob /tmp/generated/convex/_generated/dataModel.d.ts)"
+          SERVER_DTS_SHA="$(create_blob /tmp/generated/convex/_generated/server.d.ts)"
+          SERVER_JS_SHA="$(create_blob /tmp/generated/convex/_generated/server.js)"
+          CONVEX_TSCONFIG_SHA="$(create_blob /tmp/generated/convex/tsconfig.json)"
 
           jq -n             --arg base "$BASE_TREE"             --arg lock "$LOCK_SHA"             --arg apiDts "$API_DTS_SHA"             --arg apiJs "$API_JS_SHA"             --arg dataModel "$DATA_MODEL_SHA"             --arg serverDts "$SERVER_DTS_SHA"             --arg serverJs "$SERVER_JS_SHA"             --arg tsconfig "$CONVEX_TSCONFIG_SHA"             '{
               base_tree:$base,
@@ -79,13 +67,13 @@ jobs:
               ]
             }' > /tmp/tree.json
 
-          TREE_SHA="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/trees" --input /tmp/tree.json --jq .sha)"
+          TREE_SHA="$(gh api --method POST             "repos/$GITHUB_REPOSITORY/git/trees"             --input /tmp/tree.json             --jq .sha)"
 
-          jq -n             --arg message "chore: commit generated Convex metadata"             --arg tree "$TREE_SHA"             --arg parent "$HEAD_SHA"             '{message:$message,tree:$tree,parents:[$parent]}' > /tmp/commit.json
+          jq -n             --arg message "chore: commit generated Convex metadata"             --arg tree "$TREE_SHA"             --arg parent "$HEAD_SHA"             '{message:$message,tree:$tree,parents:[$parent]}'             > /tmp/commit.json
 
-          COMMIT_SHA="$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/commits" --input /tmp/commit.json --jq .sha)"
+          COMMIT_SHA="$(gh api --method POST             "repos/$GITHUB_REPOSITORY/git/commits"             --input /tmp/commit.json             --jq .sha)"
 
           jq -n --arg sha "$COMMIT_SHA" '{sha:$sha,force:false}' |
-            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$GITHUB_REF_NAME" --input -
+            gh api --method PATCH               "repos/$GITHUB_REPOSITORY/git/refs/heads/$GITHUB_REF_NAME"               --input -
 
           echo "Committed generated metadata at $COMMIT_SHA"
