@@ -1,10 +1,9 @@
 import { create } from "zustand";
-import { COMPANIES, type Company, type SortKey } from "@/data/companies";
+import type { SortKey } from "@/data/companies";
 import { NOTIFICATIONS } from "@/data/notifications";
 import { DEFAULT_FILTERS } from "@/lib/companies";
 
 type CompaniesState = {
-  companies: Company[];
   sortBy: SortKey;
   owner: string;
   stage: string;
@@ -36,13 +35,11 @@ type CompaniesState = {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   setActiveTab: (tab: string) => void;
-  addCompany: (company: Company) => void;
 };
 
 export const useCompaniesStore = create<CompaniesState>((set) => ({
-  companies: COMPANIES,
   ...DEFAULT_FILTERS,
-  selectedIds: ["microsoft"],
+  selectedIds: [],
   detailId: null,
   detailOpen: false,
   profileName: null,
@@ -83,9 +80,4 @@ export const useCompaniesStore = create<CompaniesState>((set) => ({
     })),
   markAllNotificationsRead: () => set({ unreadNotificationIds: [] }),
   setActiveTab: (activeTab) => set({ activeTab }),
-  addCompany: (company) =>
-    set((state) => ({
-      companies: [company, ...state.companies],
-      newCompanyOpen: false,
-    })),
 }));
