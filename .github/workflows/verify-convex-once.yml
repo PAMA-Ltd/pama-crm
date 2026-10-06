@@ -1,0 +1,50 @@
+name: Verify Convex Once
+
+on:
+  push:
+    branches:
+      - feat/convex-backend
+    paths:
+      - ".github/workflows/verify-convex-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies and refresh lockfile
+        run: npm install --ignore-scripts
+
+      - name: Generate Convex types
+        env:
+          CONVEX_AGENT_MODE: anonymous
+          CLERK_JWT_ISSUER_DOMAIN: https://example.clerk.accounts.dev
+        run: |
+          npx convex codegen --typecheck disable || npx convex dev --once
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Upload generated metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: convex-generated-metadata
+          path: |
+            package-lock.json
+            convex/_generated/
+            convex/tsconfig.json
+          if-no-files-found: warn
