@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Geist } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, pageMetadata } from "@/lib/seo";
 import ScrollToTop from "@/components/_common/scroll-to-top";
@@ -40,10 +41,12 @@ export default function RootLayout({
         />
       </head>
       <body className="relative z-0 font-sans antialiased">
-        <ConvexClientProvider>
-          <ScrollToTop />
-          {children}
-        </ConvexClientProvider>
+        <ClerkProvider>
+          <ConvexClientProvider>
+            <ScrollToTop />
+            {children}
+          </ConvexClientProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
