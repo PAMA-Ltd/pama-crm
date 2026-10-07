@@ -17,6 +17,7 @@ import ProfileAccount from "./profile-account";
 import { CURRENT_USER, profileByName } from "@/data/companies";
 import { ALL_OWNERS, formatMoney } from "@/lib/companies";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 import UsersIcon from "@/public/assets/images/companies/sidebar/users.svg";
 import XIcon from "@/public/assets/images/companies/detail/x.svg";
 import MailIcon from "@/public/assets/images/companies/detail/mail-04.svg";
@@ -25,7 +26,7 @@ import PhoneIcon from "@/public/assets/images/companies/detail/phone.svg";
 export default function Profile() {
   const profileName = useCompaniesStore((state) => state.profileName);
   const profileOpen = useCompaniesStore((state) => state.profileOpen);
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies } = useCompanies();
   const closeProfile = useCompaniesStore((state) => state.closeProfile);
   const openDetail = useCompaniesStore((state) => state.openDetail);
   const setOwner = useCompaniesStore((state) => state.setOwner);

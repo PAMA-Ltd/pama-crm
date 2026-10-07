@@ -13,6 +13,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/_ui/tabs";
 import NotificationItem from "./notification-item";
 import { NOTIFICATIONS } from "@/data/notifications";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 import BellIcon from "@/public/assets/images/companies/header/bell.svg";
 
 type Filter = "all" | "unread";
@@ -21,7 +22,7 @@ export default function Notifications() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const navigated = useRef(false);
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies } = useCompanies();
   const unreadIds = useCompaniesStore((state) => state.unreadNotificationIds);
   const markRead = useCompaniesStore((state) => state.markNotificationRead);
   const markAllRead = useCompaniesStore(

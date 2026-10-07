@@ -1,33 +1,40 @@
 "use client";
 
-import Button from "@/components/_ui/button";
+import { usePathname } from "next/navigation";
 import { ScrollArea } from "@/components/_ui/scroll-area";
 import SidebarNavItem from "./sidebar-nav-item";
 import SidebarSection from "./sidebar-section";
-import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
+import { useContacts } from "@/hooks/use-contacts";
+import { useDeals } from "@/hooks/use-deals";
 import Logo from "@/public/assets/images/_common/logo.svg";
 import BuildingIcon from "@/public/assets/images/companies/sidebar/building.svg";
 import ClipboardIcon from "@/public/assets/images/companies/sidebar/clipboard.svg";
 import BarChartIcon from "@/public/assets/images/companies/sidebar/bar-chart.svg";
 import ListIcon from "@/public/assets/images/companies/sidebar/list.svg";
 import BookClosedIcon from "@/public/assets/images/companies/sidebar/book-closed.svg";
-import MailIcon from "@/public/assets/images/companies/sidebar/mail.svg";
-import TargetIcon from "@/public/assets/images/companies/sidebar/target-05.svg";
-import TargetAltIcon from "@/public/assets/images/companies/sidebar/target-03.svg";
-import UsersIcon from "@/public/assets/images/companies/sidebar/users.svg";
-import BarChartAltIcon from "@/public/assets/images/companies/sidebar/bar-chart-10.svg";
-import AlertTriangleIcon from "@/public/assets/images/companies/sidebar/alert-triangle.svg";
-import DotYellow from "@/public/assets/images/companies/sidebar/dot-yellow.svg";
-import DotPink from "@/public/assets/images/companies/sidebar/dot-pink.svg";
-import DotPurple from "@/public/assets/images/companies/sidebar/dot-purple.svg";
-import UserPlusIcon from "@/public/assets/images/companies/sidebar/user-plus.svg";
-import MessageQuestionIcon from "@/public/assets/images/companies/sidebar/message-question.svg";
-import WalletIcon from "@/public/assets/images/companies/sidebar/wallet.svg";
 
-const BASE_COMPANY_COUNT = 223;
+const NAV_ITEMS = [
+  { href: "/companies", label: "Companies", icon: BuildingIcon },
+  { href: "/contacts", label: "Contacts", icon: BookClosedIcon },
+  { href: "/deals", label: "Deals Board", icon: ClipboardIcon },
+  { href: "/activities", label: "Activities", icon: ListIcon },
+  { href: "/forecast", label: "Forecast", icon: BarChartIcon },
+] as const;
 
 export default function SidebarContent() {
-  const companyCount = useCompaniesStore((state) => state.companies.length);
+  const pathname = usePathname();
+  const { companies } = useCompanies();
+  const { contacts } = useContacts();
+  const { deals } = useDeals();
+
+  const counts: Record<string, number | undefined> = {
+    "/companies": companies.length,
+    "/contacts": contacts.length,
+    "/deals": deals.filter(
+      (deal) => deal.stage !== "Won" && deal.stage !== "Lost",
+    ).length,
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -35,77 +42,35 @@ export default function SidebarContent() {
         <Logo aria-hidden className="size-8 shrink-0 overflow-visible" />
         <div className="flex min-w-0 flex-col gap-1">
           <span className="lead-style block truncate font-medium tracking-[-0.01em]">
-            Sales CRM
+            Pama CRM
           </span>
           <span className="caption-style text-subtle block truncate">
-            Company pipeline
+            Internal sales workspace
           </span>
         </div>
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
-        <nav aria-label="Primary">
-          <SidebarSection className="border-sidebar-border border-b">
-            <SidebarNavItem
-              icon={BuildingIcon}
-              label="Companies"
-              count={BASE_COMPANY_COUNT + companyCount}
-              active
-            />
-            <SidebarNavItem icon={ClipboardIcon} label="Deals Board" />
-            <SidebarNavItem icon={BarChartIcon} label="Forecast" count={9} />
-            <SidebarNavItem icon={ListIcon} label="Activities" />
-            <SidebarNavItem icon={BookClosedIcon} label="Contacts" count={38} />
-            <SidebarNavItem icon={MailIcon} label="Email Sequences" />
-          </SidebarSection>
-
-          <SidebarSection
-            title="Team"
-            className="border-sidebar-border border-b"
-          >
-            <SidebarNavItem icon={TargetIcon} label="Strategic AEs" />
-            <SidebarNavItem icon={TargetAltIcon} label="Mid Market" />
-            <SidebarNavItem icon={UsersIcon} label="SDR Team" />
-          </SidebarSection>
-
-          <SidebarSection
-            title="Reporting"
-            className="border-sidebar-border border-b"
-          >
-            <SidebarNavItem icon={BarChartAltIcon} label="Q1 Forecast" />
-            <SidebarNavItem icon={AlertTriangleIcon} label="Slipping Deals" />
-          </SidebarSection>
-
-          <SidebarSection title="Pipelines">
-            <SidebarNavItem icon={DotYellow} label="North America" />
-            <SidebarNavItem icon={DotPink} label="EMEA Enterprise" />
-            <SidebarNavItem icon={DotPurple} label="APAC Expansion" />
+        <nav aria-label="Primary" className="py-1">
+          <SidebarSection>
+            {NAV_ITEMS.map((item) => (
+              <SidebarNavItem
+                key={item.href}
+                icon={item.icon}
+                label={item.label}
+                href={item.href}
+                count={counts[item.href]}
+                active={pathname === item.href}
+              />
+            ))}
           </SidebarSection>
         </nav>
       </ScrollArea>
 
-      <SidebarSection className="border-sidebar-border shrink-0 border-t border-b">
-        <SidebarNavItem
-          icon={UserPlusIcon}
-          label="Invite teammates"
-          tone="quiet"
-        />
-        <SidebarNavItem icon={MessageQuestionIcon} label="Help" tone="quiet" />
-      </SidebarSection>
-
-      <div className="border-sidebar-border bg-sidebar-accent flex shrink-0 items-center justify-between gap-2 border-b p-4">
-        <div className="flex flex-col gap-2">
-          <span className="lead-style block font-medium tracking-[-0.01em]">
-            14 Days
-          </span>
-          <span className="caption-style text-subtle block">
-            Left on trials
-          </span>
-        </div>
-        <Button variant="muted" size="md">
-          <WalletIcon aria-hidden className="size-3.5" />
-          Add Billings
-        </Button>
+      <div className="border-sidebar-border bg-sidebar-accent shrink-0 border-t p-3">
+        <p className="caption-style text-subtle leading-4">
+          Companies, contacts, deals and follow-ups stay synced through Convex.
+        </p>
       </div>
     </div>
   );

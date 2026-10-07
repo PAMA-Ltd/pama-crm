@@ -2,11 +2,10 @@
 
 import { useCommandState } from "cmdk";
 import Asset from "@/components/_ui/asset";
-import Avatar from "@/components/_ui/avatar";
 import { CommandItem } from "@/components/_ui/command";
 import Tag from "@/components/_ui/tag";
 import SegmentBar from "@/components/_common/segment-bar";
-import { TAG_TONES, ownerByName, type Company } from "@/data/companies";
+import { TAG_TONES, type Company } from "@/data/companies";
 import { formatDate, formatMoney, splitTags } from "@/lib/companies";
 import { cn } from "@/lib/utils";
 import CalendarIcon from "@/public/assets/images/_common/calendar.svg";
@@ -54,7 +53,6 @@ export function CommandCompanyRow({
   company,
   onSelect,
 }: CommandCompanyRowProps) {
-  const owner = ownerByName(company.owner);
   const { visible, hidden } = splitTags(company.tags);
 
   return (
@@ -98,9 +96,8 @@ export function CommandCompanyRow({
         )}
       </span>
 
-      <span className="text-soft hidden min-w-0 items-center gap-1.5 md:flex">
-        <Avatar src={owner.avatar} alt="" />
-        <span className="truncate">{owner.name}</span>
+      <span className="text-soft hidden min-w-0 truncate md:block">
+        {company.owner}
       </span>
 
       <span className="flex items-center justify-end gap-1 tabular-nums">

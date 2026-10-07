@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -11,8 +13,13 @@ import SidebarResizer from "./sidebar-resizer";
 import { useCompaniesStore } from "@/stores/companies-store";
 
 export default function Sidebar() {
+  const pathname = usePathname();
   const sidebarOpen = useCompaniesStore((state) => state.sidebarOpen);
   const setSidebarOpen = useCompaniesStore((state) => state.setSidebarOpen);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname, setSidebarOpen]);
 
   return (
     <>
@@ -28,7 +35,7 @@ export default function Sidebar() {
         >
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SheetDescription className="sr-only">
-            Sales CRM sections and pipelines
+            Pama CRM navigation
           </SheetDescription>
           <SidebarContent />
         </SheetContent>

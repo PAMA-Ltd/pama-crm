@@ -7,7 +7,14 @@ export type CompanyFilters = {
   activityWindow: number;
 };
 
-export const TODAY = "2026-09-14";
+function localIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export const TODAY = localIsoDate();
 
 export const ALL_OWNERS = "all";
 export const ANY_STAGE = "any";
@@ -143,7 +150,13 @@ export function formatMoney(value: number) {
   return value.toLocaleString("en-US");
 }
 
-export function daysSince(iso: string) {
+export function daysSince(iso: string, now = new Date()) {
   const day = 24 * 60 * 60 * 1000;
-  return Math.max(0, Math.round((Date.parse(TODAY) - Date.parse(iso)) / day));
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const interaction = new Date(`${iso}T00:00:00`);
+
+  return Math.max(
+    0,
+    Math.round((today.getTime() - interaction.getTime()) / day),
+  );
 }

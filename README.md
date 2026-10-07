@@ -1,37 +1,62 @@
-# Kargul Starter
+# Pama CRM
 
-Next.js 16 + React 19 + Tailwind CSS 4 boilerplate. Read `CONVENTIONS.md` before writing any component, section, or page — it is the whole spec for how this repo is built.
+Internal sales CRM for Pama, built on the Kargul Studio sales CRM interface.
 
-## Getting started
+## Stack
+
+- Next.js 16
+- React 19
+- Tailwind CSS 4
+- Convex
+- Clerk
+- Zustand for transient UI state
+
+## Development
+
+Install dependencies:
 
 ```bash
 npm install
+```
+
+Link or start a Convex development deployment:
+
+```bash
+npx convex dev
+```
+
+Then start Next.js:
+
+```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Environment
 
-| Script                 | What it does                                                       |
-| ---------------------- | ------------------------------------------------------------------ |
-| `npm run dev`          | Start the dev server                                               |
-| `npm run build`        | Production build                                                   |
-| `npm run start`        | Serve the production build                                         |
-| `npm run lint`         | ESLint                                                             |
-| `npm run to:avif`      | Convert an image to AVIF and report its inline cost — rule 11      |
-| `npm run extract:avif` | Pull the first frame of every `.webm` under `public/` as a poster  |
-| `npm run frame:rive`   | Render a still from a `.riv` file for use as its poster            |
+The Next.js app needs:
 
-## First things to set on a new project
+```bash
+NEXT_PUBLIC_CONVEX_URL=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+```
 
-1. **`lib/seo.ts`** — `SITE_NAME`, `SITE_URL`, `SITE_DESCRIPTION`, `SITE_ROUTES`. Everything in `app/robots.ts`, `app/sitemap.ts`, `app/llms.txt/route.ts` and every page's metadata derives from these (rule 18). Set `NEXT_PUBLIC_SITE_URL` in the environment to override the URL per deploy.
-2. **`app/globals.css`** — match the `@layer base` type scale and the `--padding-section-*` tokens to the design before building anything (rules 1 and 3).
-3. **`app/opengraph-image.jpg`** — 1200×630, with an `opengraph-image.alt.txt` beside it.
-4. **Fonts** — `app/layout.tsx` ships Inter + a local Inter Display; swap them for the design's typeface.
+Configure the Clerk issuer on the Convex deployment:
 
-## Docs
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-domain.clerk.accounts.dev"
+```
 
-| File               | What's in it                                                        |
-| ------------------ | ------------------------------------------------------------------- |
-| `CONVENTIONS.md`   | The build rules. Read first.                                        |
-| `AGENTS.md`        | Next.js version notes for agents                                    |
-| `OPTIMIZATION.md`  | Why `Asset`'s Rive loading is gated behind LCP, with the measurements |
+The Clerk application must also have its Convex integration enabled so Convex can validate Clerk-issued tokens.
+
+Any signed-in account can access the CRM. Authentication is required; there is no email allowlist.
+
+## Current backend scope
+
+Companies are now read from and created in Convex. Filters, selections, dialogs, and other transient interface state stay in Zustand.
+
+Deals, contacts, activities, owners, notifications, and reporting are still demo/frontend data and can be migrated incrementally.
+
+## License
+
+This repository is derived from Kargul Studio's MIT-licensed sales CRM. The upstream copyright and license notice are retained in [LICENSE](./LICENSE).

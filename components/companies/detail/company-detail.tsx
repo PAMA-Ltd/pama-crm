@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import Asset from "@/components/_ui/asset";
-import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
 import Tag from "@/components/_ui/tag";
 import { ScrollArea } from "@/components/_ui/scroll-area";
@@ -15,50 +13,35 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/_ui/sheet";
-import FilterMenu from "@/components/_common/filter-menu";
 import DetailSection from "./detail-section";
 import PipelineHealth from "./pipeline-health";
-import ActivityTrend from "./activity-trend";
-import ScoreCard from "./score-card";
-import {
-  SCORE_CARDS,
-  TAG_TONES,
-  TREND_WINDOWS,
-  ownerByName,
-} from "@/data/companies";
+import { TAG_TONES } from "@/data/companies";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 import BuildingIcon from "@/public/assets/images/companies/detail/building.svg";
 import XIcon from "@/public/assets/images/companies/detail/x.svg";
-import MailIcon from "@/public/assets/images/companies/detail/mail-04.svg";
-import PhoneIcon from "@/public/assets/images/companies/detail/phone.svg";
-
-const WINDOW_OPTIONS = TREND_WINDOWS.map((label) => ({ value: label, label }));
 
 export default function CompanyDetail() {
   const detailId = useCompaniesStore((state) => state.detailId);
   const detailOpen = useCompaniesStore((state) => state.detailOpen);
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies } = useCompanies();
   const closeDetail = useCompaniesStore((state) => state.closeDetail);
-  const openProfile = useCompaniesStore((state) => state.openProfile);
-  const [trendWindow, setTrendWindow] = useState(TREND_WINDOWS[1]);
-  const [scoreWindow, setScoreWindow] = useState(TREND_WINDOWS[1]);
 
   const company = companies.find((item) => item.id === detailId);
-  const owner = company ? ownerByName(company.owner) : null;
 
   return (
     <Sheet
       open={detailOpen && company !== undefined}
       onOpenChange={(open) => !open && closeDetail()}
     >
-      <SheetContent side="right" className="sm:w-[560px] sm:max-w-[560px]">
+      <SheetContent side="right" className="sm:w-[520px] sm:max-w-[520px]">
         <SheetHeader>
           <div className="flex items-center gap-2">
             <BuildingIcon aria-hidden className="text-icon size-3.5" />
-            <SheetTitle>Companies Detail</SheetTitle>
+            <SheetTitle>Company detail</SheetTitle>
           </div>
           <SheetDescription className="sr-only">
-            Account summary, pipeline health, activity and score cards
+            Company summary and live pipeline health
           </SheetDescription>
           <SheetClose asChild>
             <Button
@@ -72,7 +55,7 @@ export default function CompanyDetail() {
           </SheetClose>
         </SheetHeader>
 
-        {company && owner && (
+        {company && (
           <ScrollArea className="min-h-0 flex-1">
             <div className="flex items-start gap-3 p-5 shadow-[inset_0_-1px_0_var(--line-strong)]">
               <span className="bg-muted flex size-[50px] shrink-0 items-center justify-center rounded-[12.5px] shadow-[0px_6.25px_6.25px_0px_rgba(15,15,15,0.24),0px_0px_0px_1.563px_#232323]">
@@ -104,83 +87,23 @@ export default function CompanyDetail() {
               </div>
             </div>
 
-            <DetailSection title="Account summary">
-              <div className="lead-style flex flex-wrap items-center gap-x-4 gap-y-3">
-                <Button
-                  variant="ghost"
-                  size="none"
-                  onClick={() => openProfile(owner.name)}
-                  aria-label={`Open ${owner.name} profile`}
-                  className="lead-style text-foreground -mx-1.5 gap-1.5 px-1.5 py-1 font-medium"
-                >
-                  <Avatar src={owner.avatar} alt="" />
-                  {owner.name}
-                </Button>
-                <span className="flex items-center gap-1">
-                  <MailIcon aria-hidden className="text-soft size-3" />
-                  {owner.email}
-                </span>
-                <span className="flex items-center gap-1">
-                  <PhoneIcon aria-hidden className="text-soft size-3" />
-                  {owner.phone}
-                </span>
-              </div>
+            <DetailSection title="Account owner">
+              <p className="lead-style">{company.owner}</p>
             </DetailSection>
 
-            <DetailSection title="Pipeline health">
+            <DetailSection title="Pipeline health" className="shadow-none">
               <PipelineHealth company={company} />
-            </DetailSection>
-
-            <DetailSection
-              title="Activity trend"
-              action={
-                <FilterMenu
-                  value={trendWindow}
-                  options={WINDOW_OPTIONS}
-                  onChange={setTrendWindow}
-                  align="end"
-                />
-              }
-            >
-              <ActivityTrend company={company} />
-            </DetailSection>
-
-            <DetailSection
-              title="Score card"
-              className="gap-3 shadow-none"
-              action={
-                <FilterMenu
-                  value={scoreWindow}
-                  options={WINDOW_OPTIONS}
-                  onChange={setScoreWindow}
-                  align="end"
-                  className="shadow-[0px_4px_4px_0px_rgba(15,15,15,0.24),0px_0px_0px_1px_#393939]"
-                />
-              }
-            >
-              <div className="flex flex-col gap-2">
-                {SCORE_CARDS.map((card, index) => (
-                  <ScoreCard key={`${card.title}-${index}`} card={card} />
-                ))}
-              </div>
             </DetailSection>
           </ScrollArea>
         )}
 
         <SheetFooter>
-          <Button variant="link" size="none" href="#" className="lead-style">
-            Need help? Ask us.
+          <Button variant="secondary" size="sm" href="/contacts">
+            View contacts
           </Button>
-          <div className="flex items-center gap-2">
-            <SheetClose asChild>
-              <Button variant="subtle" size="sm">
-                Cancel
-              </Button>
-            </SheetClose>
-            <Button variant="primary" size="sm" onClick={closeDetail}>
-              Save Update
-            </Button>
-          </div>
+          <Button variant="primary" size="sm" href="/deals">
+            View deals
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

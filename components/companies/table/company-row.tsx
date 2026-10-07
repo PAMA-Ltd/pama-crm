@@ -1,14 +1,13 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
 import { Checkbox } from "@/components/_ui/checkbox";
 import Tag from "@/components/_ui/tag";
 import { TableCell, TableRow } from "@/components/_ui/table";
 import SegmentBar from "@/components/_common/segment-bar";
 import Sparkline from "@/components/_common/sparkline";
-import { TAG_TONES, ownerByName, type Company } from "@/data/companies";
+import { TAG_TONES, type Company } from "@/data/companies";
 import { formatDate, formatMoney, splitTags } from "@/lib/companies";
 import { cn } from "@/lib/utils";
 import {
@@ -26,7 +25,6 @@ type CompanyRowProps = {
   active: boolean;
   onToggle: () => void;
   onOpen: () => void;
-  onOpenOwner: () => void;
 };
 
 function cellClass(key: TableColumnKey) {
@@ -43,9 +41,7 @@ export default function CompanyRow({
   active,
   onToggle,
   onOpen,
-  onOpenOwner,
 }: CompanyRowProps) {
-  const owner = ownerByName(company.owner);
   const { visible, hidden } = splitTags(company.tags);
 
   return (
@@ -83,17 +79,8 @@ export default function CompanyRow({
           )}
         </span>
       </TableCell>
-      <TableCell role="cell" className={cellClass("owner")} onClick={stop}>
-        <Button
-          variant="ghost"
-          size="none"
-          onClick={onOpenOwner}
-          aria-label={`Open ${owner.name} profile`}
-          className="text-foreground -mx-1.5 gap-1.5 px-1.5 py-1 font-normal"
-        >
-          <Avatar src={owner.avatar} alt="" />
-          {owner.name}
-        </Button>
+      <TableCell role="cell" className={cellClass("owner")}>
+        <span className="text-soft">{company.owner}</span>
       </TableCell>
       <TableCell role="cell" className={cellClass("openDeals")}>
         {company.openDeals}

@@ -21,9 +21,10 @@ import {
 import { filterCompanies } from "@/lib/companies";
 import { cn } from "@/lib/utils";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useCompanies } from "@/hooks/use-companies";
 
 export default function CompaniesTable() {
-  const companies = useCompaniesStore((state) => state.companies);
+  const { companies, isLoading } = useCompanies();
   const sortBy = useCompaniesStore((state) => state.sortBy);
   const owner = useCompaniesStore((state) => state.owner);
   const stage = useCompaniesStore((state) => state.stage);
@@ -34,7 +35,6 @@ export default function CompaniesTable() {
   const toggleSelected = useCompaniesStore((state) => state.toggleSelected);
   const setSelected = useCompaniesStore((state) => state.setSelected);
   const openDetail = useCompaniesStore((state) => state.openDetail);
-  const openProfile = useCompaniesStore((state) => state.openProfile);
 
   const visible = useMemo(
     () => filterCompanies(companies, { sortBy, owner, stage, activityWindow }),
@@ -95,7 +95,6 @@ export default function CompaniesTable() {
                 active={detailOpen && detailId === company.id}
                 onToggle={() => toggleSelected(company.id)}
                 onOpen={() => openDetail(company.id)}
-                onOpenOwner={() => openProfile(company.owner)}
               />
             ))}
             {visible.length === 0 && (
@@ -104,7 +103,9 @@ export default function CompaniesTable() {
                   role="cell"
                   className="caption-style text-muted-foreground col-span-full flex h-[120px] items-center justify-center"
                 >
-                  No companies match the current filters.
+                  {isLoading
+                    ? "Loading companies…"
+                    : "No companies match the current filters."}
                 </td>
               </TableRow>
             )}
