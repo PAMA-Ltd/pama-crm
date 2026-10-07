@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes";
 import { Geist } from "next/font/google";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, pageMetadata } from "@/lib/seo";
 import ScrollToTop from "@/components/_common/scroll-to-top";
@@ -41,7 +42,7 @@ export default function RootLayout({
         />
       </head>
       <body className="relative z-0 font-sans antialiased">
-        <ClerkProvider>
+        <ClerkProvider appearance={{ theme: shadcn }}>
           <ConvexClientProvider>
             <ScrollToTop />
             {children}

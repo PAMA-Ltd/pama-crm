@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "7.9.10",
+    "@clerk/ui": "^1.39.0",
     "@rive-app/canvas": "^2.31.0",
     "@rive-app/react-canvas": "^4.31.0",
     "class-variance-authority": "^0.7.1",

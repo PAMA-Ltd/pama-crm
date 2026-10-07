@@ -6,15 +6,6 @@ type AuthContext = {
   };
 };
 
-function allowedEmails() {
-  return new Set(
-    (process.env.PAMA_CRM_ALLOWED_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLocaleLowerCase())
-      .filter(Boolean),
-  );
-}
-
 export async function getCrmAccess(ctx: AuthContext) {
   const identity = await ctx.auth.getUserIdentity();
 
@@ -28,7 +19,7 @@ export async function getCrmAccess(ctx: AuthContext) {
   }
 
   const email = identity.email?.trim().toLocaleLowerCase() ?? null;
-  const authorized = email !== null && allowedEmails().has(email);
+  const authorized = true;
 
   return {
     authenticated: true,

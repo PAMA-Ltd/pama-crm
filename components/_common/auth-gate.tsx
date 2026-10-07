@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { SignInButton } from "@clerk/nextjs";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import {
   Authenticated,
   AuthLoading,
@@ -33,8 +33,8 @@ function SignedInGate({ children }: { children: ReactNode }) {
           <h1>Access restricted</h1>
           <p className="text-muted-foreground text-sm">
             {access.email
-              ? `${access.email} is signed in, but it is not on the Pama CRM access list.`
-              : "This account does not have an email address that can be authorized."}
+              ? `${access.email} is signed in, but access could not be verified.`
+              : "Access could not be verified for this account."}
           </p>
         </div>
       </main>
@@ -57,7 +57,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
             <div className="flex flex-col gap-1.5">
               <h1>Pama CRM</h1>
               <p className="text-muted-foreground text-sm">
-                Sign in with an approved Pama account to continue.
+                Sign in or create an account to continue.
               </p>
             </div>
             <SignInButton mode="modal">
@@ -65,6 +65,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
                 Sign in
               </Button>
             </SignInButton>
+            <SignUpButton mode="modal">
+              <Button variant="subtle" size="md">
+                Create account
+              </Button>
+            </SignUpButton>
           </div>
         </main>
       </Unauthenticated>

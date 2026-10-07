@@ -41,14 +41,15 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 ```
 
-Configure the Clerk issuer and the exact email addresses allowed into the CRM on the Convex deployment:
+Configure the Clerk issuer on the Convex deployment:
 
 ```bash
 npx convex env set CLERK_JWT_ISSUER_DOMAIN "https://your-clerk-domain.clerk.accounts.dev"
-npx convex env set PAMA_CRM_ALLOWED_EMAILS "you@example.com,teammate@example.com"
 ```
 
 The Clerk application must also have its Convex integration enabled so Convex can validate Clerk-issued tokens.
+
+Any signed-in account can access the CRM. Authentication is required; there is no email allowlist.
 
 ## Current backend scope
 
