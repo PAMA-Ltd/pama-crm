@@ -414,11 +414,11 @@ export const updateCompany = mutation({
       args.tokenHash,
       args.organizationSlug,
     );
-    const company = await ensureCompany(ctx, organization._id, args.companyId);
+    await ensureCompany(ctx, organization._id, args.companyId);
     const patch: {
       name?: string;
       normalizedName?: string;
-      tags?: typeof company.tags;
+      tags?: NonNullable<typeof args.tags>;
       ownerSubject?: string;
       owner?: string;
       lastInteraction?: { date: string; label: string };
