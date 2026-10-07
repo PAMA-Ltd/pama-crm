@@ -20,11 +20,13 @@ export const lastInteractionValidator = v.object({
 });
 
 export const companyFields = {
+  organizationId: v.optional(v.id("organizations")),
   name: v.string(),
   normalizedName: v.string(),
   createdBy: v.string(),
-  tags: v.array(companyTagValidator),
+  ownerSubject: v.optional(v.string()),
   owner: v.string(),
+  tags: v.array(companyTagValidator),
   openDeals: v.number(),
   pipelineValue: v.number(),
   winProbability: v.number(),
@@ -36,9 +38,11 @@ export const companyFields = {
 export const companyResultValidator = v.object({
   _id: v.id("companies"),
   _creationTime: v.number(),
+  organizationId: v.optional(v.id("organizations")),
   name: v.string(),
-  tags: v.array(companyTagValidator),
+  ownerSubject: v.optional(v.string()),
   owner: v.string(),
+  tags: v.array(companyTagValidator),
   openDeals: v.number(),
   pipelineValue: v.number(),
   winProbability: v.number(),
@@ -48,8 +52,10 @@ export const companyResultValidator = v.object({
 });
 
 export const createCompanyArgs = {
+  organizationId: v.id("organizations"),
   name: v.string(),
   tags: v.array(companyTagValidator),
+  ownerSubject: v.optional(v.string()),
   lastInteraction: lastInteractionValidator,
   logo: v.optional(v.string()),
 };
