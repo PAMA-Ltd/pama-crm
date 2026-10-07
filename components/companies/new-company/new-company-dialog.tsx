@@ -2,7 +2,6 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
-import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
 import {
   Dialog,
@@ -22,14 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/_ui/select";
-import { Slider } from "@/components/_ui/slider";
-import SegmentBar from "@/components/_common/segment-bar";
 import FormSection from "./form-section";
 import LogoUpload from "./logo-upload";
 import {
-  DEFAULT_TREND,
   INTERACTION_TYPES,
-  OWNERS,
   SEGMENTS,
   STAGES,
   type Segment,
@@ -45,10 +40,6 @@ type FormState = {
   name: string;
   segment: Segment;
   stage: Stage;
-  owner: string;
-  pipelineValue: string;
-  openDeals: string;
-  winProbability: number;
   interactionDate: string;
   interactionType: string;
 };
@@ -58,10 +49,6 @@ const EMPTY_FORM: FormState = {
   name: "",
   segment: SEGMENTS[0],
   stage: STAGES[0],
-  owner: OWNERS[0].name,
-  pipelineValue: "",
-  openDeals: "1",
-  winProbability: 50,
   interactionDate: TODAY,
   interactionType: INTERACTION_TYPES[0],
 };
@@ -97,14 +84,6 @@ export default function NewCompanyDialog() {
         name,
         logo: form.logo ?? undefined,
         tags: [form.segment, form.stage],
-        owner: form.owner,
-        openDeals: Math.max(0, Math.round(Number(form.openDeals) || 0)),
-        pipelineValue: Math.max(
-          0,
-          Math.round(Number(form.pipelineValue) || 0),
-        ),
-        winProbability: form.winProbability,
-        trend: DEFAULT_TREND,
         lastInteraction: {
           date: form.interactionDate || TODAY,
           label: form.interactionType,
@@ -134,7 +113,8 @@ export default function NewCompanyDialog() {
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
             <DialogDescription>
-              Add a company to the pipeline. It appears in the list right away.
+              Add an account. Deal totals and win probability will be calculated
+              automatically from its opportunities.
             </DialogDescription>
           </DialogHeader>
 
@@ -186,7 +166,7 @@ export default function NewCompanyDialog() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Stage" htmlFor="company-stage">
+              <Field label="Relationship" htmlFor="company-stage">
                 <Select
                   value={form.stage}
                   onValueChange={(value) => update("stage", value as Stage)}
@@ -206,96 +186,7 @@ export default function NewCompanyDialog() {
             </div>
           </FormSection>
 
-          <FormSection title="Ownership & deal">
-            <Field label="Account owner" htmlFor="company-owner">
-              <Select
-                value={form.owner}
-                onValueChange={(value) => update("owner", value)}
-              >
-                <SelectTrigger id="company-owner">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {OWNERS.map((owner) => (
-                    <SelectItem key={owner.name} value={owner.name}>
-                      <span className="flex items-center gap-2">
-                        <Avatar src={owner.avatar} alt="" />
-                        {owner.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Pipeline value" htmlFor="company-pipeline">
-                <div className="relative">
-                  <span
-                    aria-hidden
-                    className="text-subtle pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[14px] leading-none"
-                  >
-                    $
-                  </span>
-                  <Input
-                    id="company-pipeline"
-                    type="number"
-                    min={0}
-                    step={1000}
-                    inputMode="numeric"
-                    value={form.pipelineValue}
-                    onChange={(event) =>
-                      update("pipelineValue", event.target.value)
-                    }
-                    placeholder="250000"
-                    className="pl-6 tabular-nums"
-                  />
-                </div>
-              </Field>
-              <Field label="Open deals" htmlFor="company-deals">
-                <Input
-                  id="company-deals"
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  value={form.openDeals}
-                  onChange={(event) => update("openDeals", event.target.value)}
-                  className="tabular-nums"
-                />
-              </Field>
-            </div>
-
-            <Field
-              label="Win probability"
-              htmlFor="company-win"
-              trailing={
-                <span className="caption-style text-foreground tabular-nums">
-                  {form.winProbability}%
-                </span>
-              }
-            >
-              <div className="flex flex-col gap-3">
-                <Slider
-                  id="company-win"
-                  aria-label="Win probability"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[form.winProbability]}
-                  onValueChange={([value]) => update("winProbability", value)}
-                />
-                <SegmentBar
-                  percent={form.winProbability}
-                  segments={40}
-                  className="h-3 w-full border border-white/4 px-px"
-                  segmentClassName="h-2"
-                  trackClassName="bg-white/8"
-                />
-              </div>
-            </Field>
-          </FormSection>
-
-          <FormSection title="Last interaction">
+          <FormSection title="Latest interaction">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Date" htmlFor="company-interaction-date">
                 <Input
@@ -330,10 +221,7 @@ export default function NewCompanyDialog() {
           </FormSection>
 
           {submitError && (
-            <p
-              role="alert"
-              className="caption-style text-danger px-5 pb-3"
-            >
+            <p role="alert" className="caption-style text-danger px-5 pb-3">
               {submitError}
             </p>
           )}

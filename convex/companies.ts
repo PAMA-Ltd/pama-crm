@@ -8,36 +8,10 @@ import { requireCrmUser } from "./authz";
 
 const MAX_LIST_LIMIT = 500;
 const DEFAULT_LIST_LIMIT = 250;
+const DEFAULT_TREND = [4, 4, 5, 5, 2, 7, 11, 7, 5, 7, 5, 3, 7, 14];
 
 function normalizeName(name: string) {
   return name.trim().toLocaleLowerCase();
-}
-
-function validateCompanyInput(args: {
-  name: string;
-  openDeals: number;
-  pipelineValue: number;
-  winProbability: number;
-}) {
-  if (!args.name.trim()) {
-    throw new Error("Company name is required.");
-  }
-
-  if (!Number.isFinite(args.openDeals) || args.openDeals < 0) {
-    throw new Error("Open deals must be a non-negative number.");
-  }
-
-  if (!Number.isFinite(args.pipelineValue) || args.pipelineValue < 0) {
-    throw new Error("Pipeline value must be a non-negative number.");
-  }
-
-  if (
-    !Number.isFinite(args.winProbability) ||
-    args.winProbability < 0 ||
-    args.winProbability > 100
-  ) {
-    throw new Error("Win probability must be between 0 and 100.");
-  }
 }
 
 export const list = query({
@@ -76,11 +50,10 @@ export const create = mutation({
   returns: v.id("companies"),
   handler: async (ctx, args) => {
     const identity = await requireCrmUser(ctx);
-    validateCompanyInput(args);
-
     const name = args.name.trim();
-    const normalizedName = normalizeName(name);
+    if (!name) throw new Error("Company name is required.");
 
+    const normalizedName = normalizeName(name);
     const existing = await ctx.db
       .query("companies")
       .withIndex("by_normalized_name", (q) =>
@@ -93,13 +66,17 @@ export const create = mutation({
     }
 
     return await ctx.db.insert("companies", {
-      ...args,
       name,
       normalizedName,
       createdBy: identity.subject,
-      openDeals: Math.round(args.openDeals),
-      pipelineValue: Math.round(args.pipelineValue),
-      winProbability: Math.round(args.winProbability),
+      tags: args.tags,
+      owner: identity.name ?? identity.email ?? "Pama CRM",
+      openDeals: 0,
+      pipelineValue: 0,
+      winProbability: 0,
+      trend: DEFAULT_TREND,
+      lastInteraction: args.lastInteraction,
+      logo: args.logo,
     });
   },
 });

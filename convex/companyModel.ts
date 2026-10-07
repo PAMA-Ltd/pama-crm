@@ -50,11 +50,6 @@ export const companyResultValidator = v.object({
 export const createCompanyArgs = {
   name: v.string(),
   tags: v.array(companyTagValidator),
-  owner: v.string(),
-  openDeals: v.number(),
-  pipelineValue: v.number(),
-  winProbability: v.number(),
-  trend: v.array(v.number()),
   lastInteraction: lastInteractionValidator,
   logo: v.optional(v.string()),
 };
