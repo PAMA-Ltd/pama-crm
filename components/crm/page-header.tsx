@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { UserButton, useUser } from "@clerk/nextjs";
 import Button from "@/components/_ui/button";
+import Notifications from "@/components/companies/header/notifications/notifications";
 import { useCompaniesStore } from "@/stores/companies-store";
 import MenuIcon from "@/public/assets/images/_common/menu.svg";
 
@@ -44,6 +45,7 @@ export default function PageHeader({
 
       <div className="flex shrink-0 items-center gap-2">
         {actions}
+        <Notifications />
         <div className="caption-style border-border bg-card flex h-[30px] items-center gap-1.5 rounded-md border py-[4px] pr-[7px] pl-[4px]">
           <UserButton />
           <span className="hidden max-w-[140px] truncate sm:inline">

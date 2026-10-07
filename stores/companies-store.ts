@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import type { SortKey } from "@/data/companies";
-import { NOTIFICATIONS } from "@/data/notifications";
 import { DEFAULT_FILTERS } from "@/lib/companies";
 
 type CompaniesState = {
@@ -16,8 +15,6 @@ type CompaniesState = {
   newCompanyOpen: boolean;
   sidebarOpen: boolean;
   searchOpen: boolean;
-  unreadNotificationIds: string[];
-  activeTab: string;
   setSortBy: (sortBy: SortKey) => void;
   setOwner: (owner: string) => void;
   setStage: (stage: string) => void;
@@ -27,14 +24,11 @@ type CompaniesState = {
   setSelected: (ids: string[]) => void;
   openDetail: (id: string) => void;
   closeDetail: () => void;
-  openProfile: (name: string) => void;
+  openProfile: (subject: string) => void;
   closeProfile: () => void;
   setNewCompanyOpen: (open: boolean) => void;
   setSidebarOpen: (open: boolean) => void;
   setSearchOpen: (open: boolean) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
-  setActiveTab: (tab: string) => void;
 };
 
 export const useCompaniesStore = create<CompaniesState>((set) => ({
@@ -47,10 +41,6 @@ export const useCompaniesStore = create<CompaniesState>((set) => ({
   newCompanyOpen: false,
   sidebarOpen: false,
   searchOpen: false,
-  unreadNotificationIds: NOTIFICATIONS.filter((item) => item.unread).map(
-    (item) => item.id,
-  ),
-  activeTab: "companies",
   setSortBy: (sortBy) => set({ sortBy }),
   setOwner: (owner) => set({ owner }),
   setStage: (stage) => set({ stage }),
@@ -72,12 +62,4 @@ export const useCompaniesStore = create<CompaniesState>((set) => ({
   setNewCompanyOpen: (newCompanyOpen) => set({ newCompanyOpen }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),
-  markNotificationRead: (id) =>
-    set((state) => ({
-      unreadNotificationIds: state.unreadNotificationIds.filter(
-        (unread) => unread !== id,
-      ),
-    })),
-  markAllNotificationsRead: () => set({ unreadNotificationIds: [] }),
-  setActiveTab: (activeTab) => set({ activeTab }),
 }));
