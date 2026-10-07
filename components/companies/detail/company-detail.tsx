@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import Asset from "@/components/_ui/asset";
 import Button from "@/components/_ui/button";
@@ -110,17 +110,12 @@ export default function CompanyDetail() {
       : "skip",
   ) as CompanyInsights | undefined;
 
-  const linkedContacts = useMemo(
-    () => contacts.filter((contact) => contact.companyId === companyId),
-    [contacts, companyId],
+  const linkedContacts = contacts.filter(
+    (contact) => contact.companyId === companyId,
   );
-  const linkedDeals = useMemo(
-    () => deals.filter((deal) => deal.companyId === companyId),
-    [deals, companyId],
-  );
-  const linkedActivities = useMemo(
-    () => activities.filter((activity) => activity.companyId === companyId),
-    [activities, companyId],
+  const linkedDeals = deals.filter((deal) => deal.companyId === companyId);
+  const linkedActivities = activities.filter(
+    (activity) => activity.companyId === companyId,
   );
 
   const owner = members.find(

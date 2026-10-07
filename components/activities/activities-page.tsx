@@ -77,6 +77,7 @@ export default function ActivitiesPage() {
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [renderedAt] = useState(() => Date.now());
 
   const companyById = useMemo(
     () => new Map(companies.map((company) => [company.id, company.name])),
@@ -265,7 +266,7 @@ export default function ActivitiesPage() {
               const overdue =
                 Boolean(activity.dueAt) &&
                 !activity.completedAt &&
-                (activity.dueAt ?? 0) < Date.now();
+                (activity.dueAt ?? 0) < renderedAt;
 
               return (
                 <article

@@ -28,7 +28,7 @@ export default function Notifications() {
     return Number(window.localStorage.getItem(storageKey) ?? 0);
   });
 
-  const notifications = items ?? [];
+  const notifications = useMemo(() => items ?? [], [items]);
   const unread = useMemo(
     () => notifications.filter((item) => item.createdAt > lastSeen),
     [notifications, lastSeen],

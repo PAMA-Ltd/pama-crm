@@ -3,7 +3,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -26,11 +25,10 @@ const STORAGE_KEY = "pama-crm:organization";
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const organizations = useQuery(listOrganizations, {});
-  const [preferredId, setPreferredId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPreferredId(window.localStorage.getItem(STORAGE_KEY));
-  }, []);
+  const [preferredId, setPreferredId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem(STORAGE_KEY);
+  });
 
   const active = useMemo(() => {
     if (!organizations?.length) return null;
