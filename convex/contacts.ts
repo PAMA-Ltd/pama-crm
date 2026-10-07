@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import {
   requireOrganizationMember,
   getOrganizationMember,
@@ -22,9 +28,9 @@ function normalizedName(firstName: string, lastName: string) {
 }
 
 async function ensureCompany(
-  ctx: Parameters<typeof getOrganizationMember>[0],
-  organizationId: Parameters<typeof requireOrganizationMember>[1],
-  companyId?: any,
+  ctx: QueryCtx | MutationCtx,
+  organizationId: Id<"organizations">,
+  companyId?: Id<"companies">,
 ) {
   if (!companyId) return;
   const company = await ctx.db.get(companyId);

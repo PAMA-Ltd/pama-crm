@@ -2,6 +2,7 @@ import CompaniesHeader from "./header/header";
 import CompaniesToolbar from "./toolbar/toolbar";
 import CompaniesTable from "./table/companies-table";
 import CompanyDetail from "./detail/company-detail";
+import Profile from "./profile/profile";
 import NewCompanyDialog from "./new-company/new-company-dialog";
 import CommandMenu from "./command-menu/command-menu";
 
@@ -12,6 +13,7 @@ export default function Companies() {
       <CompaniesToolbar />
       <CompaniesTable />
       <CompanyDetail />
+      <Profile />
       <NewCompanyDialog />
       <CommandMenu />
     </section>

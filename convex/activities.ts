@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requireOrganizationMember } from "./authz";
 import {
   activityResultValidator,
@@ -16,11 +22,11 @@ function cleanOptional(value: string | undefined) {
 }
 
 async function validateLinks(
-  ctx: Parameters<typeof requireOrganizationMember>[0],
-  organizationId: Parameters<typeof requireOrganizationMember>[1],
-  companyId?: any,
-  contactId?: any,
-  dealId?: any,
+  ctx: QueryCtx | MutationCtx,
+  organizationId: Id<"organizations">,
+  companyId?: Id<"companies">,
+  contactId?: Id<"contacts">,
+  dealId?: Id<"deals">,
 ) {
   if (companyId) {
     const company = await ctx.db.get(companyId);
