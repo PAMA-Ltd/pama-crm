@@ -9,10 +9,18 @@ export function useCompanies() {
   const rows = useQuery(listCompanies, { limit: 250 });
 
   const companies: Company[] =
-    rows?.map(({ _id, _creationTime: _creationTime, ...company }) => ({
-      id: _id,
-      ...company,
-      activityDays: daysSince(company.lastInteraction.date),
+    rows?.map((row) => ({
+      id: row._id,
+      name: row.name,
+      tags: row.tags,
+      owner: row.owner,
+      openDeals: row.openDeals,
+      pipelineValue: row.pipelineValue,
+      winProbability: row.winProbability,
+      trend: row.trend,
+      lastInteraction: row.lastInteraction,
+      activityDays: daysSince(row.lastInteraction.date),
+      logo: row.logo,
     })) ?? [];
 
   return {

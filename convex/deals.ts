@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { requireCrmUser } from "./authz";
 import { dealResultValidator, dealStageValidator } from "./crmModels";
 
@@ -21,23 +22,23 @@ function cleanOptional(value: string | undefined) {
 }
 
 async function refreshCompanyMetrics(
-  ctx: Parameters<typeof mutation>[0] extends never ? never : any,
-  companyId: any,
+  ctx: MutationCtx,
+  companyId: Id<"companies">,
 ) {
   const deals = await ctx.db
     .query("deals")
-    .withIndex("by_company", (q: any) => q.eq("companyId", companyId))
+    .withIndex("by_company", (q) => q.eq("companyId", companyId))
     .collect();
 
   const openDeals = deals.filter(
-    (deal: any) => deal.stage !== "Won" && deal.stage !== "Lost",
+    (deal) => deal.stage !== "Won" && deal.stage !== "Lost",
   );
   const pipelineValue = openDeals.reduce(
-    (total: number, deal: any) => total + deal.amount,
+    (total, deal) => total + deal.amount,
     0,
   );
   const weighted = openDeals.reduce(
-    (total: number, deal: any) => total + deal.amount * deal.probability,
+    (total, deal) => total + deal.amount * deal.probability,
     0,
   );
   const winProbability =
