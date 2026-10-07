@@ -53,3 +53,25 @@ export const claimLegacyData = makeFunctionReference<
   { organizationId: string },
   { companies: number; contacts: number; deals: number; activities: number }
 >("organizations:claimLegacyData");
+
+
+export type PendingOrganizationInvite = {
+  _id: string;
+  organizationId: string;
+  organizationName: string;
+  email: string;
+  role: OrganizationRole;
+  expiresAt: number;
+};
+
+export const listPendingOrganizationInvites = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  PendingOrganizationInvite[]
+>("organizations:listPendingInvites");
+
+export const acceptOrganizationInvite = makeFunctionReference<
+  "mutation",
+  { inviteId: string },
+  string
+>("organizations:acceptInvite");
