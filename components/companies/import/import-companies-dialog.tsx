@@ -169,14 +169,14 @@ export default function ImportCompaniesDialog({
                   ["interactionDate", "Interaction date"],
                   ["interactionType", "Interaction type"],
                 ] as const).map(([key, label]) => (
-                  <Field key={key} label={label}>
+                  <Field key={key} label={label} htmlFor={`company-import-${key}`}>
                     <Select
                       value={mapping[key]}
                       onValueChange={(value) =>
                         setMapping((current) => ({ ...current, [key]: value }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id={`company-import-${key}`}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

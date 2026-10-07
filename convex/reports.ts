@@ -178,6 +178,7 @@ export const companyInsights = query({
   args: {
     organizationId: v.id("organizations"),
     companyId: v.id("companies"),
+    days: v.optional(v.number()),
   },
   returns: v.object({
     activityTrend: v.array(v.number()),
@@ -225,10 +226,11 @@ export const companyInsights = query({
     ]);
 
     const today = new Date();
-    const trend = Array.from({ length: 14 }, (_, index) => {
+    const days = Math.min(90, Math.max(7, Math.round(args.days ?? 30)));
+    const trend = Array.from({ length: days }, (_, index) => {
       const day = new Date(today);
       day.setHours(0, 0, 0, 0);
-      day.setDate(day.getDate() - (13 - index));
+      day.setDate(day.getDate() - (days - 1 - index));
       const next = new Date(day);
       next.setDate(next.getDate() + 1);
       return activities.filter(
@@ -249,7 +251,7 @@ export const companyInsights = query({
         : 0;
     const recentActivities = activities.filter(
       (activity) =>
-        activity._creationTime >= Date.now() - 30 * 24 * 60 * 60 * 1000,
+        activity._creationTime >= Date.now() - days * 24 * 60 * 60 * 1000,
     ).length;
 
     const engagementScore = Math.min(100, recentActivities * 12 + contacts.length * 8);

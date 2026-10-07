@@ -63,6 +63,6 @@ export const listNotifications = makeFunctionReference<
 
 export const getCompanyInsights = makeFunctionReference<
   "query",
-  { organizationId: string; companyId: string },
+  { organizationId: string; companyId: string; days?: number },
   CompanyInsights
 >("reports:companyInsights");
