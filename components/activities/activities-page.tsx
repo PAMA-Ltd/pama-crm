@@ -22,6 +22,7 @@ import {
 } from "@/components/_ui/select";
 import EmptyState from "@/components/crm/empty-state";
 import PageHeader from "@/components/crm/page-header";
+import { useWorkspace } from "@/components/crm/workspace-provider";
 import { useActivities } from "@/hooks/use-activities";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
@@ -29,8 +30,11 @@ import { useDeals } from "@/hooks/use-deals";
 import {
   ACTIVITY_TYPES,
   createActivity,
+  removeActivity,
   setActivityCompleted,
+  updateActivity,
   type ActivityType,
+  type CrmActivity,
 } from "@/lib/convex/activities";
 
 const EMPTY_FORM = {
@@ -43,6 +47,10 @@ const EMPTY_FORM = {
   dueDate: "",
 };
 
+function dateInput(timestamp?: number) {
+  return timestamp ? new Date(timestamp).toISOString().slice(0, 10) : "";
+}
+
 function formatDue(timestamp?: number) {
   if (!timestamp) return "No due date";
   return new Intl.DateTimeFormat("en-NG", {
@@ -53,13 +61,17 @@ function formatDue(timestamp?: number) {
 }
 
 export default function ActivitiesPage() {
+  const { organization } = useWorkspace();
   const { activities, isLoading } = useActivities();
   const { companies } = useCompanies();
   const { contacts } = useContacts();
   const { deals } = useDeals();
   const create = useMutation(createActivity);
+  const updateMutation = useMutation(updateActivity);
+  const remove = useMutation(removeActivity);
   const setCompleted = useMutation(setActivityCompleted);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
@@ -85,9 +97,19 @@ export default function ActivitiesPage() {
     [deals],
   );
 
-  const visible = activities.filter((activity) =>
-    showCompleted ? true : !activity.completedAt,
-  );
+  const visible = useMemo(() => {
+    const rows = activities.filter((activity) =>
+      showCompleted ? true : !activity.completedAt,
+    );
+    return [...rows].sort((a, b) => {
+      if (Boolean(a.completedAt) !== Boolean(b.completedAt)) {
+        return a.completedAt ? 1 : -1;
+      }
+      const aDue = a.dueAt ?? Number.MAX_SAFE_INTEGER;
+      const bDue = b.dueAt ?? Number.MAX_SAFE_INTEGER;
+      return aDue - bDue;
+    });
+  }, [activities, showCompleted]);
 
   const matchingContacts =
     form.companyId === "none"
@@ -101,7 +123,10 @@ export default function ActivitiesPage() {
       ? deals
       : deals.filter((deal) => deal.companyId === form.companyId);
 
-  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+  function updateForm<K extends keyof typeof form>(
+    key: K,
+    value: (typeof form)[K],
+  ) {
     setForm((current) => ({
       ...current,
       [key]: value,
@@ -111,30 +136,59 @@ export default function ActivitiesPage() {
     }));
   }
 
+  function openCreate() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setError(null);
+    setOpen(true);
+  }
+
+  function openEdit(activity: CrmActivity) {
+    setEditingId(activity._id);
+    setForm({
+      type: activity.type,
+      subject: activity.subject,
+      description: activity.description ?? "",
+      companyId: activity.companyId ?? "none",
+      contactId: activity.contactId ?? "none",
+      dealId: activity.dealId ?? "none",
+      dueDate: dateInput(activity.dueAt),
+    });
+    setError(null);
+    setOpen(true);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const payload = {
+      organizationId: organization._id,
+      type: form.type,
+      subject: form.subject,
+      description: form.description || undefined,
+      companyId: form.companyId === "none" ? undefined : form.companyId,
+      contactId: form.contactId === "none" ? undefined : form.contactId,
+      dealId: form.dealId === "none" ? undefined : form.dealId,
+      dueAt: form.dueDate
+        ? new Date(`${form.dueDate}T17:00:00`).getTime()
+        : undefined,
+    };
+
     setError(null);
     setSaving(true);
-
     try {
-      await create({
-        type: form.type,
-        subject: form.subject,
-        description: form.description || undefined,
-        companyId: form.companyId === "none" ? undefined : form.companyId,
-        contactId: form.contactId === "none" ? undefined : form.contactId,
-        dealId: form.dealId === "none" ? undefined : form.dealId,
-        dueAt: form.dueDate
-          ? new Date(`${form.dueDate}T17:00:00`).getTime()
-          : undefined,
-      });
-      setForm(EMPTY_FORM);
+      if (editingId) {
+        await updateMutation({ ...payload, activityId: editingId });
+      } else {
+        await create(payload);
+      }
       setOpen(false);
+      setEditingId(null);
+      setForm(EMPTY_FORM);
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unable to create activity.",
+          : "Unable to save activity.",
       );
     } finally {
       setSaving(false);
@@ -144,14 +198,26 @@ export default function ActivitiesPage() {
   async function toggle(activityId: string, completed: boolean) {
     setUpdatingId(activityId);
     try {
-      await setCompleted({ activityId, completed });
+      await setCompleted({
+        organizationId: organization._id,
+        activityId,
+        completed,
+      });
     } finally {
       setUpdatingId(null);
     }
   }
 
+  async function deleteActivity(activity: CrmActivity) {
+    if (!window.confirm(`Delete “${activity.subject}”?`)) return;
+    await remove({
+      organizationId: organization._id,
+      activityId: activity._id,
+    });
+  }
+
   const newActivityButton = (
-    <Button variant="primary" size="sm" onClick={() => setOpen(true)}>
+    <Button variant="primary" size="sm" onClick={openCreate}>
       New Activity
     </Button>
   );
@@ -195,69 +261,65 @@ export default function ActivitiesPage() {
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mx-auto flex max-w-4xl flex-col gap-2">
-            {visible.map((activity) => (
-              <article
-                key={activity._id}
-                className="border-line-strong bg-card flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="border-line-strong bg-secondary inline-flex rounded-full border px-2 py-1 text-xs">
-                      {activity.type}
-                    </span>
-                    <h2
-                      className={
-                        activity.completedAt
-                          ? "text-soft line-through"
-                          : undefined
+            {visible.map((activity) => {
+              const overdue =
+                Boolean(activity.dueAt) &&
+                !activity.completedAt &&
+                (activity.dueAt ?? 0) < Date.now();
+
+              return (
+                <article
+                  key={activity._id}
+                  className="border-line-strong bg-card flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => openEdit(activity)}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="border-line-strong bg-secondary inline-flex rounded-full border px-2 py-1 text-xs">
+                        {activity.type}
+                      </span>
+                      {overdue && (
+                        <span className="caption-style text-danger">Overdue</span>
+                      )}
+                      <h2 className={activity.completedAt ? "text-soft line-through" : undefined}>
+                        {activity.subject}
+                      </h2>
+                    </div>
+                    {activity.description && (
+                      <p className="text-soft mt-2 leading-5">{activity.description}</p>
+                    )}
+                    <div className="caption-style text-subtle mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                      <span>{formatDue(activity.dueAt)}</span>
+                      {activity.companyId && <span>{companyById.get(activity.companyId) ?? "Company"}</span>}
+                      {activity.contactId && <span>{contactById.get(activity.contactId) ?? "Contact"}</span>}
+                      {activity.dealId && <span>{dealById.get(activity.dealId) ?? "Deal"}</span>}
+                    </div>
+                  </button>
+
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant={activity.completedAt ? "subtle" : "secondary"}
+                      size="sm"
+                      disabled={updatingId === activity._id}
+                      onClick={() =>
+                        void toggle(activity._id, activity.completedAt === undefined)
                       }
                     >
-                      {activity.subject}
-                    </h2>
+                      {activity.completedAt ? "Reopen" : "Mark done"}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(activity)}>
+                      Edit
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => void deleteActivity(activity)}>
+                      Delete
+                    </Button>
                   </div>
-
-                  {activity.description && (
-                    <p className="text-soft mt-2 leading-5">
-                      {activity.description}
-                    </p>
-                  )}
-
-                  <div className="caption-style text-subtle mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                    <span>{formatDue(activity.dueAt)}</span>
-                    {activity.companyId && (
-                      <span>
-                        {companyById.get(activity.companyId) ?? "Company"}
-                      </span>
-                    )}
-                    {activity.contactId && (
-                      <span>
-                        {contactById.get(activity.contactId) ?? "Contact"}
-                      </span>
-                    )}
-                    {activity.dealId && (
-                      <span>{dealById.get(activity.dealId) ?? "Deal"}</span>
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  variant={activity.completedAt ? "subtle" : "secondary"}
-                  size="sm"
-                  disabled={updatingId === activity._id}
-                  onClick={() =>
-                    toggle(activity._id, activity.completedAt === undefined)
-                  }
-                >
-                  {activity.completedAt ? "Reopen" : "Mark done"}
-                </Button>
-              </article>
-            ))}
-
-            {visible.length === 0 && (
-              <div className="caption-style text-subtle flex h-40 items-center justify-center">
-                No open activities. You’re caught up.
-              </div>
-            )}
+                </article>
+              );
+            })}
           </div>
         </div>
       )}
@@ -265,9 +327,11 @@ export default function ActivitiesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New activity</DialogTitle>
+            <DialogTitle>{editingId ? "Edit activity" : "New activity"}</DialogTitle>
             <DialogDescription>
-              Add a follow-up, interaction or note and link it to CRM records.
+              {editingId
+                ? "Update this CRM interaction or follow-up."
+                : "Add a follow-up, interaction or note and link it to CRM records."}
             </DialogDescription>
           </DialogHeader>
 
@@ -276,18 +340,12 @@ export default function ActivitiesPage() {
               <Field label="Type" htmlFor="activity-type">
                 <Select
                   value={form.type}
-                  onValueChange={(value) =>
-                    update("type", value as ActivityType)
-                  }
+                  onValueChange={(value) => updateForm("type", value as ActivityType)}
                 >
-                  <SelectTrigger id="activity-type">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="activity-type"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ACTIVITY_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -298,21 +356,15 @@ export default function ActivitiesPage() {
                   id="activity-due"
                   type="date"
                   value={form.dueDate}
-                  onChange={(event) => update("dueDate", event.target.value)}
+                  onChange={(event) => updateForm("dueDate", event.target.value)}
                 />
               </Field>
 
-              <Field
-                label="Subject"
-                htmlFor="activity-subject"
-                className="sm:col-span-2"
-                required
-              >
+              <Field label="Subject" htmlFor="activity-subject" className="sm:col-span-2" required>
                 <Input
                   id="activity-subject"
                   value={form.subject}
-                  onChange={(event) => update("subject", event.target.value)}
-                  placeholder="Follow up on proposal…"
+                  onChange={(event) => updateForm("subject", event.target.value)}
                   required
                   autoFocus
                 />
@@ -321,17 +373,13 @@ export default function ActivitiesPage() {
               <Field label="Company" htmlFor="activity-company">
                 <Select
                   value={form.companyId}
-                  onValueChange={(value) => update("companyId", value)}
+                  onValueChange={(value) => updateForm("companyId", value)}
                 >
-                  <SelectTrigger id="activity-company">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="activity-company"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No company</SelectItem>
                     {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
+                      <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -340,89 +388,58 @@ export default function ActivitiesPage() {
               <Field label="Contact" htmlFor="activity-contact">
                 <Select
                   value={form.contactId}
-                  onValueChange={(value) => update("contactId", value)}
+                  onValueChange={(value) => updateForm("contactId", value)}
                 >
-                  <SelectTrigger id="activity-contact">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="activity-contact"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No contact</SelectItem>
                     {matchingContacts.map((contact) => (
                       <SelectItem key={contact._id} value={contact._id}>
-                        {[contact.firstName, contact.lastName]
-                          .filter(Boolean)
-                          .join(" ")}
+                        {[contact.firstName, contact.lastName].filter(Boolean).join(" ")}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
 
-              <Field
-                label="Deal"
-                htmlFor="activity-deal"
-                className="sm:col-span-2"
-              >
+              <Field label="Deal" htmlFor="activity-deal" className="sm:col-span-2">
                 <Select
                   value={form.dealId}
-                  onValueChange={(value) => update("dealId", value)}
+                  onValueChange={(value) => updateForm("dealId", value)}
                 >
-                  <SelectTrigger id="activity-deal">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="activity-deal"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No deal</SelectItem>
                     {matchingDeals.map((deal) => (
-                      <SelectItem key={deal._id} value={deal._id}>
-                        {deal.name}
-                      </SelectItem>
+                      <SelectItem key={deal._id} value={deal._id}>{deal.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
 
-              <Field
-                label="Details"
-                htmlFor="activity-description"
-                className="sm:col-span-2"
-              >
+              <Field label="Details" htmlFor="activity-description" className="sm:col-span-2">
                 <textarea
                   id="activity-description"
                   value={form.description}
-                  onChange={(event) =>
-                    update("description", event.target.value)
-                  }
-                  rows={4}
-                  className="border-line-strong bg-secondary text-foreground placeholder:text-subtle focus-visible:border-ring w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
-                  placeholder="What happened or what needs to happen next?"
+                  onChange={(event) => updateForm("description", event.target.value)}
+                  rows={5}
+                  className="border-line-strong bg-secondary text-foreground w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </Field>
 
               {error && (
-                <p
-                  role="alert"
-                  className="caption-style text-danger sm:col-span-2"
-                >
+                <p role="alert" className="caption-style text-danger sm:col-span-2">
                   {error}
                 </p>
               )}
             </div>
 
             <DialogFooter>
-              <Button
-                variant="subtle"
-                size="sm"
-                onClick={() => setOpen(false)}
-              >
+              <Button variant="subtle" size="sm" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                type="submit"
-                disabled={saving}
-              >
-                {saving ? "Creating…" : "Create activity"}
+              <Button variant="primary" size="sm" type="submit" disabled={saving}>
+                {saving ? "Saving…" : editingId ? "Save activity" : "Create activity"}
               </Button>
             </DialogFooter>
           </form>
