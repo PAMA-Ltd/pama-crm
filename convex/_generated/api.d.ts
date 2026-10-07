@@ -9,9 +9,13 @@
  */
 
 import type * as access from "../access.js";
+import type * as activities from "../activities.js";
 import type * as authz from "../authz.js";
 import type * as companies from "../companies.js";
 import type * as companyModel from "../companyModel.js";
+import type * as contacts from "../contacts.js";
+import type * as crmModels from "../crmModels.js";
+import type * as deals from "../deals.js";
 
 import type {
   ApiFromModules,
@@ -21,9 +25,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  activities: typeof activities;
   authz: typeof authz;
   companies: typeof companies;
   companyModel: typeof companyModel;
+  contacts: typeof contacts;
+  crmModels: typeof crmModels;
+  deals: typeof deals;
 }>;
 
 /**
