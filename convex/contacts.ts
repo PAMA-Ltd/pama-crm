@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireCrmUser } from "./authz";
+import {
+  requireOrganizationMember,
+  getOrganizationMember,
+} from "./authz";
 import {
   contactResultValidator,
   contactStatusValidator,
@@ -18,26 +21,49 @@ function normalizedName(firstName: string, lastName: string) {
   return `${firstName.trim()} ${lastName.trim()}`.trim().toLocaleLowerCase();
 }
 
+async function ensureCompany(
+  ctx: Parameters<typeof getOrganizationMember>[0],
+  organizationId: Parameters<typeof requireOrganizationMember>[1],
+  companyId?: any,
+) {
+  if (!companyId) return;
+  const company = await ctx.db.get(companyId);
+  if (!company || company.organizationId !== organizationId) {
+    throw new Error("Company not found.");
+  }
+}
+
 export const list = query({
-  args: { limit: v.optional(v.number()) },
+  args: {
+    organizationId: v.id("organizations"),
+    limit: v.optional(v.number()),
+  },
   returns: v.array(contactResultValidator),
   handler: async (ctx, args) => {
-    await requireCrmUser(ctx);
+    await requireOrganizationMember(ctx, args.organizationId);
     const limit = Math.min(
       Math.max(Math.floor(args.limit ?? DEFAULT_LIMIT), 1),
       MAX_LIMIT,
     );
-    const contacts = await ctx.db.query("contacts").order("desc").take(limit);
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .order("desc")
+      .take(limit);
 
     return contacts.map((contact) => ({
       _id: contact._id,
       _creationTime: contact._creationTime,
+      organizationId: contact.organizationId,
       firstName: contact.firstName,
       lastName: contact.lastName,
       email: contact.email,
       phone: contact.phone,
       title: contact.title,
       companyId: contact.companyId,
+      ownerSubject: contact.ownerSubject,
       status: contact.status,
       notes: contact.notes,
       updatedAt: contact.updatedAt,
@@ -47,41 +73,55 @@ export const list = query({
 
 export const create = mutation({
   args: {
+    organizationId: v.id("organizations"),
     firstName: v.string(),
     lastName: v.string(),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     title: v.optional(v.string()),
     companyId: v.optional(v.id("companies")),
+    ownerSubject: v.optional(v.string()),
     status: contactStatusValidator,
     notes: v.optional(v.string()),
   },
   returns: v.id("contacts"),
   handler: async (ctx, args) => {
-    const identity = await requireCrmUser(ctx);
+    const { identity } = await requireOrganizationMember(
+      ctx,
+      args.organizationId,
+    );
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
+    if (!firstName && !lastName) throw new Error("A contact name is required.");
 
-    if (!firstName && !lastName) {
-      throw new Error("A contact name is required.");
-    }
+    await ensureCompany(ctx, args.organizationId, args.companyId);
 
-    if (args.companyId && !(await ctx.db.get(args.companyId))) {
-      throw new Error("Company not found.");
+    const ownerSubject = args.ownerSubject || identity.subject;
+    if (
+      !(await getOrganizationMember(
+        ctx,
+        args.organizationId,
+        ownerSubject,
+      ))
+    ) {
+      throw new Error("Selected owner is not a member of this organization.");
     }
 
     const email = cleanOptional(args.email)?.toLocaleLowerCase();
     if (email) {
       const existing = await ctx.db
         .query("contacts")
-        .withIndex("by_normalized_email", (q) =>
-          q.eq("normalizedEmail", email),
+        .withIndex("by_organization_and_email", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("normalizedEmail", email),
         )
-        .first();
+        .unique();
       if (existing) throw new Error("A contact with this email already exists.");
     }
 
     return await ctx.db.insert("contacts", {
+      organizationId: args.organizationId,
       firstName,
       lastName,
       normalizedName: normalizedName(firstName, lastName),
@@ -90,6 +130,7 @@ export const create = mutation({
       phone: cleanOptional(args.phone),
       title: cleanOptional(args.title),
       companyId: args.companyId,
+      ownerSubject,
       status: args.status,
       notes: cleanOptional(args.notes),
       createdBy: identity.subject,
@@ -100,6 +141,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    organizationId: v.id("organizations"),
     contactId: v.id("contacts"),
     firstName: v.string(),
     lastName: v.string(),
@@ -107,31 +149,48 @@ export const update = mutation({
     phone: v.optional(v.string()),
     title: v.optional(v.string()),
     companyId: v.optional(v.id("companies")),
+    ownerSubject: v.optional(v.string()),
     status: contactStatusValidator,
     notes: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireCrmUser(ctx);
+    const { identity } = await requireOrganizationMember(
+      ctx,
+      args.organizationId,
+    );
     const contact = await ctx.db.get(args.contactId);
-    if (!contact) throw new Error("Contact not found.");
+    if (!contact || contact.organizationId !== args.organizationId) {
+      throw new Error("Contact not found.");
+    }
 
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
     if (!firstName && !lastName) throw new Error("A contact name is required.");
+    await ensureCompany(ctx, args.organizationId, args.companyId);
 
-    if (args.companyId && !(await ctx.db.get(args.companyId))) {
-      throw new Error("Company not found.");
+    const ownerSubject =
+      args.ownerSubject || contact.ownerSubject || identity.subject;
+    if (
+      !(await getOrganizationMember(
+        ctx,
+        args.organizationId,
+        ownerSubject,
+      ))
+    ) {
+      throw new Error("Selected owner is not a member of this organization.");
     }
 
     const email = cleanOptional(args.email)?.toLocaleLowerCase();
     if (email) {
       const duplicate = await ctx.db
         .query("contacts")
-        .withIndex("by_normalized_email", (q) =>
-          q.eq("normalizedEmail", email),
+        .withIndex("by_organization_and_email", (q) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("normalizedEmail", email),
         )
-        .first();
+        .unique();
       if (duplicate && duplicate._id !== args.contactId) {
         throw new Error("A contact with this email already exists.");
       }
@@ -146,6 +205,7 @@ export const update = mutation({
       phone: cleanOptional(args.phone),
       title: cleanOptional(args.title),
       companyId: args.companyId,
+      ownerSubject,
       status: args.status,
       notes: cleanOptional(args.notes),
       updatedAt: Date.now(),
@@ -155,19 +215,38 @@ export const update = mutation({
 });
 
 export const remove = mutation({
-  args: { contactId: v.id("contacts") },
+  args: {
+    organizationId: v.id("organizations"),
+    contactId: v.id("contacts"),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await requireCrmUser(ctx);
+    await requireOrganizationMember(ctx, args.organizationId);
     const contact = await ctx.db.get(args.contactId);
-    if (!contact) return null;
+    if (!contact || contact.organizationId !== args.organizationId) return null;
 
     const linkedDeal = await ctx.db
       .query("deals")
-      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+      .withIndex("by_organization_and_contact", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("contactId", args.contactId),
+      )
       .first();
     if (linkedDeal) {
       throw new Error("Remove this contact from its deals before deleting it.");
+    }
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_organization_and_contact", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("contactId", args.contactId),
+      )
+      .take(500);
+    for (const activity of activities) {
+      await ctx.db.patch(activity._id, { contactId: undefined });
     }
 
     await ctx.db.delete(args.contactId);

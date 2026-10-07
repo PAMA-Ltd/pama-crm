@@ -41,7 +41,9 @@ export const register = mutation({
   handler: async (ctx, args) => {
     const identity = await requireCrmUser(ctx);
     if (!args.label.trim()) throw new Error("Token label is required.");
-    if (args.tokenHash.length !== 64) throw new Error("Invalid token hash.");
+    if (!/^[a-f0-9]{64}$/.test(args.tokenHash)) {
+      throw new Error("Invalid token hash.");
+    }
 
     const existing = await ctx.db
       .query("mcpTokens")
@@ -72,10 +74,3 @@ export const revoke = mutation({
     return null;
   },
 });
-
-export async function verifyMcpTokenHash(
-  ctx: Parameters<typeof query>[0] extends never ? never : never,
-  _tokenHash: string,
-) {
-  throw new Error("Use verifyMcpTokenHashFromDb from mcpAuth.");
-}
