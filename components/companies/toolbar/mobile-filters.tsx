@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import CountBadge from "@/components/_ui/count-badge";
 import Field from "@/components/_ui/field";
@@ -27,8 +28,14 @@ import {
   STAGE_OPTIONS,
 } from "./filter-options";
 import type { SortKey } from "@/data/companies";
-import { activeFilterCount, filterCompanies } from "@/lib/companies";
+import {
+  ALL_OWNERS,
+  activeFilterCount,
+  filterCompanies,
+} from "@/lib/companies";
+import { listOrganizationMembers } from "@/lib/convex/organizations";
 import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/components/crm/workspace-provider";
 import { useCompaniesStore } from "@/stores/companies-store";
 import { useCompanies } from "@/hooks/use-companies";
 import FilterIcon from "@/public/assets/images/_common/filter.svg";
@@ -40,12 +47,16 @@ type MobileFiltersProps = {
 
 export default function MobileFilters({ className }: MobileFiltersProps) {
   const [open, setOpen] = useState(false);
+  const { organization } = useWorkspace();
+  const members =
+    useQuery(listOrganizationMembers, { organizationId: organization._id }) ?? [];
   const { companies } = useCompanies();
   const sortBy = useCompaniesStore((state) => state.sortBy);
   const owner = useCompaniesStore((state) => state.owner);
   const stage = useCompaniesStore((state) => state.stage);
   const activityWindow = useCompaniesStore((state) => state.activityWindow);
   const setSortBy = useCompaniesStore((state) => state.setSortBy);
+  const setOwner = useCompaniesStore((state) => state.setOwner);
   const setStage = useCompaniesStore((state) => state.setStage);
   const setActivityWindow = useCompaniesStore(
     (state) => state.setActivityWindow,
@@ -85,12 +96,7 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
             Sort and filter the companies table
           </SheetDescription>
           <SheetClose asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="-mr-1"
-              aria-label="Close filters"
-            >
+            <Button variant="ghost" size="icon-sm" className="-mr-1" aria-label="Close filters">
               <XIcon aria-hidden className="text-foreground size-4" />
             </Button>
           </SheetClose>
@@ -103,9 +109,7 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
                 value={sortBy}
                 onValueChange={(value) => setSortBy(value as SortKey)}
               >
-                <SelectTrigger id="mobile-sort">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="mobile-sort"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {SORT_MENU_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
@@ -116,11 +120,23 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
               </Select>
             </Field>
 
+            <Field label="Owner" htmlFor="mobile-owner">
+              <Select value={owner} onValueChange={setOwner}>
+                <SelectTrigger id="mobile-owner"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_OWNERS}>All Owners</SelectItem>
+                  {members.map((member) => (
+                    <SelectItem key={member._id} value={member.userSubject}>
+                      {member.name || member.email || "CRM member"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
             <Field label="Stage" htmlFor="mobile-stage">
               <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger id="mobile-stage">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="mobile-stage"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {STAGE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
@@ -136,9 +152,7 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
                 value={String(activityWindow)}
                 onValueChange={(value) => setActivityWindow(Number(value))}
               >
-                <SelectTrigger id="mobile-activity">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger id="mobile-activity"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ACTIVITY_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>

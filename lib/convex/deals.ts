@@ -20,9 +20,11 @@ export const DEAL_STAGES: DealStage[] = [
 export type CrmDeal = {
   _id: string;
   _creationTime: number;
+  organizationId?: string;
   name: string;
   companyId: string;
   contactId?: string;
+  pipelineId?: string;
   amount: number;
   stage: DealStage;
   probability: number;
@@ -32,9 +34,11 @@ export type CrmDeal = {
 };
 
 export type DealInput = {
+  organizationId: string;
   name: string;
   companyId: string;
   contactId?: string;
+  pipelineId?: string;
   amount: number;
   stage: DealStage;
   expectedCloseDate?: string;
@@ -43,7 +47,7 @@ export type DealInput = {
 
 export const listDeals = makeFunctionReference<
   "query",
-  { limit?: number },
+  { organizationId: string; pipelineId?: string; limit?: number },
   CrmDeal[]
 >("deals:list");
 
@@ -53,14 +57,20 @@ export const createDeal = makeFunctionReference<
   string
 >("deals:create");
 
+export const updateDeal = makeFunctionReference<
+  "mutation",
+  DealInput & { dealId: string },
+  null
+>("deals:update");
+
 export const updateDealStage = makeFunctionReference<
   "mutation",
-  { dealId: string; stage: DealStage },
+  { organizationId: string; dealId: string; stage: DealStage },
   null
 >("deals:updateStage");
 
 export const removeDeal = makeFunctionReference<
   "mutation",
-  { dealId: string },
+  { organizationId: string; dealId: string },
   null
 >("deals:remove");

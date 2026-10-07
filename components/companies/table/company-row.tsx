@@ -25,6 +25,7 @@ type CompanyRowProps = {
   active: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  onOpenOwner: () => void;
 };
 
 function cellClass(key: TableColumnKey) {
@@ -41,6 +42,7 @@ export default function CompanyRow({
   active,
   onToggle,
   onOpen,
+  onOpenOwner,
 }: CompanyRowProps) {
   const { visible, hidden } = splitTags(company.tags);
 
@@ -72,15 +74,19 @@ export default function CompanyRow({
               {tag}
             </Tag>
           ))}
-          {hidden > 0 && (
-            <Tag tone="neutral" size="sm">
-              +{hidden}
-            </Tag>
-          )}
+          {hidden > 0 && <Tag tone="neutral" size="sm">+{hidden}</Tag>}
         </span>
       </TableCell>
-      <TableCell role="cell" className={cellClass("owner")}>
-        <span className="text-soft">{company.owner}</span>
+      <TableCell role="cell" className={cellClass("owner")} onClick={stop}>
+        <Button
+          variant="ghost"
+          size="none"
+          onClick={onOpenOwner}
+          disabled={!company.ownerSubject}
+          className="text-foreground -mx-1.5 px-1.5 py-1 font-normal"
+        >
+          {company.owner}
+        </Button>
       </TableCell>
       <TableCell role="cell" className={cellClass("openDeals")}>
         {company.openDeals}
@@ -102,13 +108,8 @@ export default function CompanyRow({
       </TableCell>
       <TableCell role="cell" className={cellClass("lastInteraction")}>
         <span className="flex items-center gap-1">
-          <CalendarIcon
-            aria-hidden
-            className="text-foreground size-3.5 shrink-0"
-          />
-          <span className="tabular-nums">
-            {formatDate(company.lastInteraction.date)}
-          </span>
+          <CalendarIcon aria-hidden className="text-foreground size-3.5 shrink-0" />
+          <span className="tabular-nums">{formatDate(company.lastInteraction.date)}</span>
           <span aria-hidden className="mx-[3px] h-2 w-px bg-white/15" />
           {company.lastInteraction.label}
         </span>

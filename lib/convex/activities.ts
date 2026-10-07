@@ -13,7 +13,9 @@ export const ACTIVITY_TYPES: ActivityType[] = [
 export type CrmActivity = {
   _id: string;
   _creationTime: number;
+  organizationId?: string;
   type: ActivityType;
+  source?: "human" | "system" | "mcp";
   subject: string;
   description?: string;
   companyId?: string;
@@ -25,7 +27,9 @@ export type CrmActivity = {
 };
 
 export type ActivityInput = {
+  organizationId: string;
   type: ActivityType;
+  source?: "human" | "system" | "mcp";
   subject: string;
   description?: string;
   companyId?: string;
@@ -36,7 +40,7 @@ export type ActivityInput = {
 
 export const listActivities = makeFunctionReference<
   "query",
-  { limit?: number },
+  { organizationId: string; limit?: number },
   CrmActivity[]
 >("activities:list");
 
@@ -46,14 +50,20 @@ export const createActivity = makeFunctionReference<
   string
 >("activities:create");
 
+export const updateActivity = makeFunctionReference<
+  "mutation",
+  ActivityInput & { activityId: string },
+  null
+>("activities:update");
+
 export const setActivityCompleted = makeFunctionReference<
   "mutation",
-  { activityId: string; completed: boolean },
+  { organizationId: string; activityId: string; completed: boolean },
   null
 >("activities:setCompleted");
 
 export const removeActivity = makeFunctionReference<
   "mutation",
-  { activityId: string },
+  { organizationId: string; activityId: string },
   null
 >("activities:remove");

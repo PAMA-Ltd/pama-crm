@@ -15,7 +15,6 @@ function localIsoDate(date = new Date()) {
 }
 
 export const TODAY = localIsoDate();
-
 export const ALL_OWNERS = "all";
 export const ANY_STAGE = "any";
 
@@ -45,7 +44,12 @@ export function filterCompanies(
   { sortBy, owner, stage, activityWindow }: CompanyFilters,
 ): Company[] {
   const filtered = companies.filter((company) => {
-    if (owner !== ALL_OWNERS && company.owner !== owner) return false;
+    if (
+      owner !== ALL_OWNERS &&
+      (company.ownerSubject ?? company.owner) !== owner
+    ) {
+      return false;
+    }
     if (stage !== ANY_STAGE && !company.tags.some((tag) => tag === stage)) {
       return false;
     }
@@ -96,35 +100,13 @@ export function companiesCsvRows(companies: Company[]) {
 export function splitTags(tags: Company["tags"]) {
   let used = 0;
   const visible: Company["tags"] = [];
-
   for (const tag of tags) {
     if (visible.length === 2 || used + tag.length > TAG_CHAR_BUDGET) break;
     visible.push(tag);
     used += tag.length;
   }
-
   if (visible.length === 0 && tags.length > 0) visible.push(tags[0]);
-
   return { visible, hidden: tags.length - visible.length };
-}
-
-export function companyHealth(company: Company) {
-  return {
-    discovery: Math.round(company.winProbability * 0.372),
-    evaluation: Math.round(company.winProbability * 0.651),
-    procurement: Math.round(company.winProbability * 0.372),
-  };
-}
-
-export function companyActivity(company: Company) {
-  const deals = company.openDeals;
-  return {
-    total: deals * 15,
-    touches: deals * 4,
-    emails: deals + 4,
-    meetings: Math.ceil(deals / 2),
-    calls: deals + 1,
-  };
 }
 
 export function formatDate(iso: string) {
@@ -154,7 +136,6 @@ export function daysSince(iso: string, now = new Date()) {
   const day = 24 * 60 * 60 * 1000;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const interaction = new Date(`${iso}T00:00:00`);
-
   return Math.max(
     0,
     Math.round((today.getTime() - interaction.getTime()) / day),

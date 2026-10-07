@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import {
   Dialog,
@@ -32,7 +32,9 @@ import {
 } from "@/data/companies";
 import { TODAY } from "@/lib/companies";
 import { createCompany } from "@/lib/convex/companies";
+import { listOrganizationMembers } from "@/lib/convex/organizations";
 import { useCompaniesStore } from "@/stores/companies-store";
+import { useWorkspace } from "@/components/crm/workspace-provider";
 import PlusIcon from "@/public/assets/images/_common/plus.svg";
 
 type FormState = {
@@ -40,6 +42,7 @@ type FormState = {
   name: string;
   segment: Segment;
   stage: Stage;
+  ownerSubject: string;
   interactionDate: string;
   interactionType: string;
 };
@@ -49,11 +52,15 @@ const EMPTY_FORM: FormState = {
   name: "",
   segment: SEGMENTS[0],
   stage: STAGES[0],
+  ownerSubject: "",
   interactionDate: TODAY,
   interactionType: INTERACTION_TYPES[0],
 };
 
 export default function NewCompanyDialog() {
+  const { organization } = useWorkspace();
+  const members =
+    useQuery(listOrganizationMembers, { organizationId: organization._id }) ?? [];
   const open = useCompaniesStore((state) => state.newCompanyOpen);
   const setOpen = useCompaniesStore((state) => state.setNewCompanyOpen);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -78,12 +85,13 @@ export default function NewCompanyDialog() {
 
     setSubmitError(null);
     setIsSubmitting(true);
-
     try {
       await create({
+        organizationId: organization._id,
         name,
         logo: form.logo ?? undefined,
         tags: [form.segment, form.stage],
+        ownerSubject: form.ownerSubject || undefined,
         lastInteraction: {
           date: form.interactionDate || TODAY,
           label: form.interactionType,
@@ -113,8 +121,8 @@ export default function NewCompanyDialog() {
           <DialogHeader>
             <DialogTitle>New Company</DialogTitle>
             <DialogDescription>
-              Add an account. Deal totals and win probability will be calculated
-              automatically from its opportunities.
+              Add a company to {organization.name}. Deal totals and probability
+              will be calculated from real opportunities.
             </DialogDescription>
           </DialogHeader>
 
@@ -124,7 +132,6 @@ export default function NewCompanyDialog() {
               companyName={form.name}
               onChange={(logo) => update("logo", logo)}
             />
-
             <Field
               label="Company name"
               htmlFor="company-name"
@@ -140,28 +147,19 @@ export default function NewCompanyDialog() {
                   if (nameError) setNameError(null);
                 }}
                 placeholder="Acme Inc."
-                autoComplete="off"
-                aria-invalid={nameError ? true : undefined}
-                aria-describedby={nameError ? "company-name-error" : undefined}
-                className="aria-invalid:border-danger"
                 autoFocus
               />
             </Field>
-
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Segment" htmlFor="company-segment">
                 <Select
                   value={form.segment}
                   onValueChange={(value) => update("segment", value as Segment)}
                 >
-                  <SelectTrigger id="company-segment">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="company-segment"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SEGMENTS.map((segment) => (
-                      <SelectItem key={segment} value={segment}>
-                        {segment}
-                      </SelectItem>
+                      <SelectItem key={segment} value={segment}>{segment}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -171,14 +169,10 @@ export default function NewCompanyDialog() {
                   value={form.stage}
                   onValueChange={(value) => update("stage", value as Stage)}
                 >
-                  <SelectTrigger id="company-stage">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="company-stage"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {STAGES.map((stage) => (
-                      <SelectItem key={stage} value={stage}>
-                        {stage}
-                      </SelectItem>
+                      <SelectItem key={stage} value={stage}>{stage}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -186,7 +180,25 @@ export default function NewCompanyDialog() {
             </div>
           </FormSection>
 
-          <FormSection title="Latest interaction">
+          <FormSection title="Ownership & activity">
+            <Field label="Account owner" htmlFor="company-owner">
+              <Select
+                value={form.ownerSubject || "automatic"}
+                onValueChange={(value) =>
+                  update("ownerSubject", value === "automatic" ? "" : value)
+                }
+              >
+                <SelectTrigger id="company-owner"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="automatic">Me</SelectItem>
+                  {members.map((member) => (
+                    <SelectItem key={member._id} value={member.userSubject}>
+                      {member.name || member.email || "CRM member"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Date" htmlFor="company-interaction-date">
                 <Input
@@ -194,10 +206,7 @@ export default function NewCompanyDialog() {
                   type="date"
                   max={TODAY}
                   value={form.interactionDate}
-                  onChange={(event) =>
-                    update("interactionDate", event.target.value)
-                  }
-                  className="tabular-nums"
+                  onChange={(event) => update("interactionDate", event.target.value)}
                 />
               </Field>
               <Field label="Type" htmlFor="company-interaction-type">
@@ -205,14 +214,10 @@ export default function NewCompanyDialog() {
                   value={form.interactionType}
                   onValueChange={(value) => update("interactionType", value)}
                 >
-                  <SelectTrigger id="company-interaction-type">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger id="company-interaction-type"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {INTERACTION_TYPES.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -225,19 +230,11 @@ export default function NewCompanyDialog() {
               {submitError}
             </p>
           )}
-
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="subtle" size="sm">
-                Cancel
-              </Button>
+              <Button variant="subtle" size="sm">Cancel</Button>
             </DialogClose>
-            <Button
-              variant="primary"
-              size="sm"
-              type="submit"
-              disabled={isSubmitting}
-            >
+            <Button variant="primary" size="sm" type="submit" disabled={isSubmitting}>
               <PlusIcon aria-hidden className="size-3" />
               {isSubmitting ? "Creating…" : "Create Company"}
             </Button>

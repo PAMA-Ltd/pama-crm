@@ -1,12 +1,11 @@
 import Asset from "@/components/_ui/asset";
-import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
-import { ownerByName, type Company } from "@/data/companies";
-import type { Notification } from "@/data/notifications";
+import type { Company } from "@/data/companies";
+import type { CrmNotification } from "@/lib/convex/reports";
 import { cn } from "@/lib/utils";
 
 type NotificationItemProps = {
-  notification: Notification;
+  notification: CrmNotification;
   company?: Company;
   unread: boolean;
   onSelect: () => void;
@@ -51,7 +50,7 @@ export default function NotificationItem({
   unread,
   onSelect,
 }: NotificationItemProps) {
-  const actor = notification.actor ? ownerByName(notification.actor) : null;
+  const actorInitial = notification.actorName?.slice(0, 1).toUpperCase();
 
   return (
     <li className="relative">
@@ -63,9 +62,23 @@ export default function NotificationItem({
         className="p-3 data-[unread=true]:bg-white/2 data-[unread=true]:hover:bg-white/5"
       >
         <span className="relative mt-px shrink-0">
-          {actor ? (
+          {notification.actorName ? (
             <>
-              <Avatar src={actor.avatar} alt="" className="size-8" />
+              <span className="bg-muted text-soft flex size-8 items-center justify-center overflow-hidden rounded-full outline-1 -outline-offset-1 outline-white/10">
+                {notification.actorAvatarUrl ? (
+                  <Asset
+                    type="image"
+                    src={notification.actorAvatarUrl}
+                    alt=""
+                    width={1}
+                    height={1}
+                    fit="cover"
+                    className="size-full"
+                  />
+                ) : (
+                  <span className="caption-style">{actorInitial}</span>
+                )}
+              </span>
               <CompanyMark
                 company={company}
                 className="ring-popover absolute -right-1 -bottom-1 size-4 rounded-[5px] ring-2"
@@ -75,28 +88,43 @@ export default function NotificationItem({
             <CompanyMark company={company} className="size-8 rounded-lg" />
           )}
         </span>
+
         <span className="flex min-w-0 flex-1 flex-col gap-2 pr-4">
           <span className="p-style text-soft block">
-            {actor && (
-              <span className="text-foreground font-medium">{actor.name} </span>
+            {notification.actorName && (
+              <span className="text-foreground font-medium">
+                {notification.actorName}{" "}
+              </span>
             )}
-            {notification.message}
+            {notification.title}
           </span>
-          {notification.quote && (
+          {notification.description && (
             <span className="p-style border-line-strong text-soft block rounded-lg border bg-white/3 px-3 py-2">
-              {notification.quote}
+              {notification.description}
             </span>
           )}
           <span className="caption-style text-subtle flex items-center gap-1.5">
-            {notification.time}
+            {new Intl.DateTimeFormat("en-NG", {
+              day: "numeric",
+              month: "short",
+            }).format(new Date(notification.createdAt))}
             {company && (
               <>
                 <span aria-hidden className="bg-subtle size-0.5 rounded-full" />
                 {company.name}
               </>
             )}
+            <span aria-hidden className="bg-subtle size-0.5 rounded-full" />
+            {notification.kind}
+            {notification.overdue && (
+              <>
+                <span aria-hidden className="bg-subtle size-0.5 rounded-full" />
+                <span className="text-danger">Overdue</span>
+              </>
+            )}
           </span>
         </span>
+
         {unread && <span className="sr-only">Unread</span>}
       </Button>
       {unread && (

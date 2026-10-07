@@ -16,6 +16,15 @@ import type * as companyModel from "../companyModel.js";
 import type * as contacts from "../contacts.js";
 import type * as crmModels from "../crmModels.js";
 import type * as deals from "../deals.js";
+import type * as emailSequences from "../emailSequences.js";
+import type * as mcp from "../mcp.js";
+import type * as mcpAuth from "../mcpAuth.js";
+import type * as mcpTokens from "../mcpTokens.js";
+import type * as organizations from "../organizations.js";
+import type * as pipelines from "../pipelines.js";
+import type * as reports from "../reports.js";
+import type * as teams from "../teams.js";
+import type * as workspaceModels from "../workspaceModels.js";
 
 import type {
   ApiFromModules,
@@ -32,6 +41,15 @@ declare const fullApi: ApiFromModules<{
   contacts: typeof contacts;
   crmModels: typeof crmModels;
   deals: typeof deals;
+  emailSequences: typeof emailSequences;
+  mcp: typeof mcp;
+  mcpAuth: typeof mcpAuth;
+  mcpTokens: typeof mcpTokens;
+  organizations: typeof organizations;
+  pipelines: typeof pipelines;
+  reports: typeof reports;
+  teams: typeof teams;
+  workspaceModels: typeof workspaceModels;
 }>;
 
 /**

@@ -24,15 +24,23 @@ export const activityTypeValidator = v.union(
   v.literal("Task"),
 );
 
+export const activitySourceValidator = v.union(
+  v.literal("human"),
+  v.literal("system"),
+  v.literal("mcp"),
+);
+
 export const contactResultValidator = v.object({
   _id: v.id("contacts"),
   _creationTime: v.number(),
+  organizationId: v.optional(v.id("organizations")),
   firstName: v.string(),
   lastName: v.string(),
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
   title: v.optional(v.string()),
   companyId: v.optional(v.id("companies")),
+  ownerSubject: v.optional(v.string()),
   status: contactStatusValidator,
   notes: v.optional(v.string()),
   updatedAt: v.number(),
@@ -41,9 +49,11 @@ export const contactResultValidator = v.object({
 export const dealResultValidator = v.object({
   _id: v.id("deals"),
   _creationTime: v.number(),
+  organizationId: v.optional(v.id("organizations")),
   name: v.string(),
   companyId: v.id("companies"),
   contactId: v.optional(v.id("contacts")),
+  pipelineId: v.optional(v.id("pipelines")),
   amount: v.number(),
   stage: dealStageValidator,
   probability: v.number(),
@@ -55,7 +65,9 @@ export const dealResultValidator = v.object({
 export const activityResultValidator = v.object({
   _id: v.id("activities"),
   _creationTime: v.number(),
+  organizationId: v.optional(v.id("organizations")),
   type: activityTypeValidator,
+  source: v.optional(activitySourceValidator),
   subject: v.string(),
   description: v.optional(v.string()),
   companyId: v.optional(v.id("companies")),

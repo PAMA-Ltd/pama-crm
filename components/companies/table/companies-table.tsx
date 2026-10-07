@@ -35,6 +35,7 @@ export default function CompaniesTable() {
   const toggleSelected = useCompaniesStore((state) => state.toggleSelected);
   const setSelected = useCompaniesStore((state) => state.setSelected);
   const openDetail = useCompaniesStore((state) => state.openDetail);
+  const openProfile = useCompaniesStore((state) => state.openProfile);
 
   const visible = useMemo(
     () => filterCompanies(companies, { sortBy, owner, stage, activityWindow }),
@@ -95,6 +96,9 @@ export default function CompaniesTable() {
                 active={detailOpen && detailId === company.id}
                 onToggle={() => toggleSelected(company.id)}
                 onOpen={() => openDetail(company.id)}
+                onOpenOwner={() => {
+                  if (company.ownerSubject) openProfile(company.ownerSubject);
+                }}
               />
             ))}
             {visible.length === 0 && (
