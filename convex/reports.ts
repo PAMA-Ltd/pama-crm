@@ -145,6 +145,9 @@ export const notifications = query({
       title: v.string(),
       description: v.optional(v.string()),
       kind: v.string(),
+      companyId: v.optional(v.id("companies")),
+      actorName: v.optional(v.string()),
+      actorAvatarUrl: v.optional(v.string()),
       createdAt: v.number(),
       overdue: v.boolean(),
     }),
@@ -160,17 +163,33 @@ export const notifications = query({
       .take(Math.min(args.limit ?? 30, 100));
 
     const now = Date.now();
-    return activities.map((activity) => ({
-      id: activity._id,
-      title: activity.subject,
-      description: activity.description,
-      kind: activity.type,
-      createdAt: activity._creationTime,
-      overdue:
-        Boolean(activity.dueAt) &&
-        !activity.completedAt &&
-        (activity.dueAt ?? now) < now,
-    }));
+    const memberships = await ctx.db
+      .query("organizationMembers")
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .take(250);
+    const memberBySubject = new Map(
+      memberships.map((member) => [member.userSubject, member]),
+    );
+
+    return activities.map((activity) => {
+      const actor = memberBySubject.get(activity.createdBy);
+      return {
+        id: activity._id,
+        title: activity.subject,
+        description: activity.description,
+        kind: activity.type,
+        companyId: activity.companyId,
+        actorName: actor?.name ?? actor?.email,
+        actorAvatarUrl: actor?.avatarUrl,
+        createdAt: activity._creationTime,
+        overdue:
+          Boolean(activity.dueAt) &&
+          !activity.completedAt &&
+          (activity.dueAt ?? now) < now,
+      };
+    });
   },
 });
 

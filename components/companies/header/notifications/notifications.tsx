@@ -11,6 +11,8 @@ import {
   PopoverTrigger,
 } from "@/components/_ui/popover";
 import { ScrollArea } from "@/components/_ui/scroll-area";
+import NotificationItem from "./notification-item";
+import { useCompanies } from "@/hooks/use-companies";
 import { Tabs, TabsList, TabsTrigger } from "@/components/_ui/tabs";
 import { listNotifications } from "@/lib/convex/reports";
 import { useWorkspace } from "@/components/crm/workspace-provider";
@@ -21,6 +23,7 @@ type Filter = "all" | "unread";
 export default function Notifications() {
   const router = useRouter();
   const { organization } = useWorkspace();
+  const { companies } = useCompanies();
   const items = useQuery(listNotifications, {
     organizationId: organization._id,
     limit: 30,
@@ -117,43 +120,22 @@ export default function Notifications() {
           <ScrollArea viewportClassName="max-h-[min(420px,60dvh)]">
             <ul className="flex flex-col gap-0.5 p-1.5">
               {visible.map((notification) => (
-                <li key={notification.id}>
-                  <Button
-                    variant="item"
-                    size="none"
-                    className="p-3"
-                    onClick={() => {
-                      updateSeen(notification.createdAt);
-                      router.push("/activities");
-                    }}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate font-medium">
-                          {notification.title}
-                        </span>
-                        {unreadIds.has(notification.id) && (
-                          <span className="bg-danger size-1.5 shrink-0 rounded-full" />
-                        )}
-                        {notification.overdue && (
-                          <span className="caption-style text-danger">Overdue</span>
-                        )}
-                      </span>
-                      {notification.description && (
-                        <span className="caption-style text-soft mt-1 block truncate">
-                          {notification.description}
-                        </span>
-                      )}
-                      <span className="caption-style text-subtle mt-1 block">
-                        {notification.kind} ·{" "}
-                        {new Intl.DateTimeFormat("en-NG", {
-                          day: "numeric",
-                          month: "short",
-                        }).format(new Date(notification.createdAt))}
-                      </span>
-                    </span>
-                  </Button>
-                </li>
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  company={
+                    notification.companyId
+                      ? companies.find(
+                          (company) => company.id === notification.companyId,
+                        )
+                      : undefined
+                  }
+                  unread={unreadIds.has(notification.id)}
+                  onSelect={() => {
+                    updateSeen(notification.createdAt);
+                    router.push("/activities");
+                  }}
+                />
               ))}
             </ul>
           </ScrollArea>

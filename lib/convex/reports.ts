@@ -21,6 +21,9 @@ export type CrmNotification = {
   title: string;
   description?: string;
   kind: string;
+  companyId?: string;
+  actorName?: string;
+  actorAvatarUrl?: string;
   createdAt: number;
   overdue: boolean;
 };
