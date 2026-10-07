@@ -23,6 +23,7 @@ import {
 } from "@/components/_ui/select";
 import EmptyState from "@/components/crm/empty-state";
 import PageHeader from "@/components/crm/page-header";
+import SalesTabs from "@/components/crm/sales-tabs";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
@@ -229,9 +230,10 @@ export default function DealsPage() {
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader
         title="Deals"
-        description={`${openPipeline.length} open · $${formatMoney(pipelineValue)} pipeline`}
+        description={`${openPipeline.length} open · ${formatMoney(pipelineValue)} pipeline`}
         actions={newDealButton}
       />
+      <SalesTabs />
 
       {requestedPipeline && (
         <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-2">

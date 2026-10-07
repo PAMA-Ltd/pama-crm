@@ -11,12 +11,14 @@ type PageHeaderProps = {
   title: string;
   description?: string;
   actions?: ReactNode;
+  statusBadge?: ReactNode;
 };
 
 export default function PageHeader({
   title,
   description,
   actions,
+  statusBadge,
 }: PageHeaderProps) {
   const { user } = useUser();
   const setSidebarOpen = useCompaniesStore((state) => state.setSidebarOpen);
@@ -34,7 +36,10 @@ export default function PageHeader({
           <MenuIcon aria-hidden className="size-3.5" />
         </Button>
         <div className="min-w-0">
-          <h1 className="truncate">{title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate">{title}</h1>
+            {statusBadge}
+          </div>
           {description && (
             <p className="caption-style text-subtle mt-1 truncate">
               {description}

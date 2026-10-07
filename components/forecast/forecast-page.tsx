@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import PageHeader from "@/components/crm/page-header";
+import SalesTabs from "@/components/crm/sales-tabs";
 import EmptyState from "@/components/crm/empty-state";
 import Button from "@/components/_ui/button";
 import {
@@ -66,6 +67,7 @@ export default function ForecastPage() {
         title="Forecast"
         description="Live roll-up from your deal pipeline"
       />
+      <SalesTabs />
 
       {isLoading ? (
         <div className="caption-style text-subtle flex flex-1 items-center justify-center">

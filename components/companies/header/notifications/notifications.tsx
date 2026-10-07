@@ -11,9 +11,12 @@ import {
   PopoverTrigger,
 } from "@/components/_ui/popover";
 import { ScrollArea } from "@/components/_ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/_ui/tabs";
 import { listNotifications } from "@/lib/convex/reports";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import BellIcon from "@/public/assets/images/companies/header/bell.svg";
+
+type Filter = "all" | "unread";
 
 export default function Notifications() {
   const router = useRouter();
@@ -23,6 +26,7 @@ export default function Notifications() {
     limit: 30,
   });
   const storageKey = `pama-crm:notifications:${organization._id}`;
+  const [filter, setFilter] = useState<Filter>("all");
   const [lastSeen, setLastSeen] = useState(() => {
     if (typeof window === "undefined") return 0;
     return Number(window.localStorage.getItem(storageKey) ?? 0);
@@ -33,12 +37,24 @@ export default function Notifications() {
     () => notifications.filter((item) => item.createdAt > lastSeen),
     [notifications, lastSeen],
   );
+  const unreadIds = useMemo(
+    () => new Set(unread.map((item) => item.id)),
+    [unread],
+  );
+  const visible =
+    filter === "all"
+      ? notifications
+      : notifications.filter((item) => unreadIds.has(item.id));
   const overdue = notifications.filter((item) => item.overdue).length;
 
-  function markAllRead() {
-    const next = Date.now();
+  function updateSeen(timestamp: number) {
+    const next = Math.max(lastSeen, timestamp);
     window.localStorage.setItem(storageKey, String(next));
     setLastSeen(next);
+  }
+
+  function markAllRead() {
+    updateSeen(Date.now());
   }
 
   return (
@@ -83,22 +99,42 @@ export default function Notifications() {
           </Button>
         </div>
 
-        {notifications.length > 0 ? (
+        <Tabs
+          value={filter}
+          onValueChange={(value) => setFilter(value as Filter)}
+        >
+          <TabsList className="border-line-strong border-b px-4">
+            <TabsTrigger value="all" className="py-3">
+              All
+            </TabsTrigger>
+            <TabsTrigger value="unread" className="py-3">
+              Unread
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {visible.length > 0 ? (
           <ScrollArea viewportClassName="max-h-[min(420px,60dvh)]">
             <ul className="flex flex-col gap-0.5 p-1.5">
-              {notifications.map((notification) => (
+              {visible.map((notification) => (
                 <li key={notification.id}>
                   <Button
                     variant="item"
                     size="none"
                     className="p-3"
-                    onClick={() => router.push("/activities")}
+                    onClick={() => {
+                      updateSeen(notification.createdAt);
+                      router.push("/activities");
+                    }}
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate font-medium">
                           {notification.title}
                         </span>
+                        {unreadIds.has(notification.id) && (
+                          <span className="bg-danger size-1.5 shrink-0 rounded-full" />
+                        )}
                         {notification.overdue && (
                           <span className="caption-style text-danger">Overdue</span>
                         )}
@@ -130,7 +166,9 @@ export default function Notifications() {
               You’re all caught up
             </span>
             <span className="caption-style text-subtle block">
-              CRM activity and overdue work will show up here.
+              {filter === "unread"
+                ? "No unread CRM activity."
+                : "CRM activity and overdue work will show up here."}
             </span>
           </div>
         )}

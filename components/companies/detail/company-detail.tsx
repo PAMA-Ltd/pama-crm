@@ -93,6 +93,7 @@ export default function CompanyDetail() {
   const update = useMutation(updateCompany);
   const remove = useMutation(removeCompany);
   const [trendWindow, setTrendWindow] = useState(TREND_WINDOWS[1]);
+  const [scoreWindow, setScoreWindow] = useState(TREND_WINDOWS[1]);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +107,17 @@ export default function CompanyDetail() {
           organizationId: organization._id,
           companyId,
           days: daysForWindow(trendWindow),
+        }
+      : "skip",
+  ) as CompanyInsights | undefined;
+
+  const scoreInsights = useQuery(
+    getCompanyInsights,
+    companyId
+      ? {
+          organizationId: organization._id,
+          companyId,
+          days: daysForWindow(scoreWindow),
         }
       : "skip",
   ) as CompanyInsights | undefined;
@@ -375,12 +387,24 @@ export default function CompanyDetail() {
                 )}
               </DetailSection>
 
-              <DetailSection title="Score card" className="gap-3">
+              <DetailSection
+                title="Score card"
+                className="gap-3"
+                action={
+                  <FilterMenu
+                    value={scoreWindow}
+                    options={WINDOW_OPTIONS}
+                    onChange={setScoreWindow}
+                    align="end"
+                    className="shadow-[0px_4px_4px_0px_rgba(15,15,15,0.24),0px_0px_0px_1px_#393939]"
+                  />
+                }
+              >
                 <div className="flex flex-col gap-2">
-                  {(insights?.scoreCards ?? []).map((card) => (
+                  {(scoreInsights?.scoreCards ?? []).map((card) => (
                     <ScoreCard key={card.title} card={card as ScoreCardData} />
                   ))}
-                  {!insights && (
+                  {!scoreInsights && (
                     <p className="caption-style text-subtle">
                       Calculating score cards…
                     </p>
