@@ -5,7 +5,6 @@ import FilterMenu from "@/components/_common/filter-menu";
 import MobileFilters from "./mobile-filters";
 import {
   ACTIVITY_OPTIONS,
-  OWNER_OPTIONS,
   SORT_MENU_OPTIONS,
   STAGE_OPTIONS,
 } from "./filter-options";
@@ -24,7 +23,6 @@ export default function CompaniesToolbar() {
   const stage = useCompaniesStore((state) => state.stage);
   const activityWindow = useCompaniesStore((state) => state.activityWindow);
   const setSortBy = useCompaniesStore((state) => state.setSortBy);
-  const setOwner = useCompaniesStore((state) => state.setOwner);
   const setStage = useCompaniesStore((state) => state.setStage);
   const setActivityWindow = useCompaniesStore(
     (state) => state.setActivityWindow,
@@ -53,12 +51,6 @@ export default function CompaniesToolbar() {
           value={sortBy}
           options={SORT_MENU_OPTIONS}
           onChange={(value) => setSortBy(value as SortKey)}
-        />
-        <FilterMenu
-          label="Filter"
-          value={owner}
-          options={OWNER_OPTIONS}
-          onChange={setOwner}
         />
         <FilterMenu
           label="Stage"

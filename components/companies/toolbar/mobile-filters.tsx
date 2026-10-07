@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Avatar from "@/components/_ui/avatar";
 import Button from "@/components/_ui/button";
 import CountBadge from "@/components/_ui/count-badge";
 import Field from "@/components/_ui/field";
@@ -24,16 +23,11 @@ import {
 } from "@/components/_ui/sheet";
 import {
   ACTIVITY_OPTIONS,
-  OWNER_OPTIONS,
   SORT_MENU_OPTIONS,
   STAGE_OPTIONS,
 } from "./filter-options";
-import { ownerByName, type SortKey } from "@/data/companies";
-import {
-  ALL_OWNERS,
-  activeFilterCount,
-  filterCompanies,
-} from "@/lib/companies";
+import type { SortKey } from "@/data/companies";
+import { activeFilterCount, filterCompanies } from "@/lib/companies";
 import { cn } from "@/lib/utils";
 import { useCompaniesStore } from "@/stores/companies-store";
 import { useCompanies } from "@/hooks/use-companies";
@@ -52,7 +46,6 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
   const stage = useCompaniesStore((state) => state.stage);
   const activityWindow = useCompaniesStore((state) => state.activityWindow);
   const setSortBy = useCompaniesStore((state) => state.setSortBy);
-  const setOwner = useCompaniesStore((state) => state.setOwner);
   const setStage = useCompaniesStore((state) => state.setStage);
   const setActivityWindow = useCompaniesStore(
     (state) => state.setActivityWindow,
@@ -117,31 +110,6 @@ export default function MobileFilters({ className }: MobileFiltersProps) {
                   {SORT_MENU_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field label="Account owner" htmlFor="mobile-owner">
-              <Select value={owner} onValueChange={setOwner}>
-                <SelectTrigger id="mobile-owner">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {OWNER_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.value === ALL_OWNERS ? (
-                        option.label
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Avatar
-                            src={ownerByName(option.value).avatar}
-                            alt=""
-                          />
-                          {option.label}
-                        </span>
-                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
