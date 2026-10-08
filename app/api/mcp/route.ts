@@ -1,4 +1,5 @@
 import { authenticateOAuthBearer } from "@/lib/mcp/oauth";
+import { toStructuredContent } from "@/lib/mcp/structured-content";
 import {
   MCP_TOOLS,
   permissionForTool,
@@ -216,7 +217,7 @@ async function handle(request: Request) {
         body.id,
         {
           content: [{ type: "text", text }],
-          structuredContent: result,
+          structuredContent: toStructuredContent(result),
           isError: false,
         },
         200,
