@@ -780,7 +780,7 @@ export async function callMcpTool(
   if(name!=="list_organizations"&&!operation)throw new Error("Unknown MCP tool: "+name);
   const adminTools=new Set(["create_organization","update_organization","archive_organization","list_organization_invitations","invite_organization_member","change_member_role","create_team","assign_member_team","delete_team","update_pipeline","create_pipeline","delete_pipeline","create_email_sequence","update_email_sequence","delete_email_sequence","list_mcp_audit"]);
   const permission=adminTools.has(name)?"admin":(operation?.kind==="mutation" || operation?.kind==="action")?"write":"read";
-  await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
+  await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
   if (name === "list_organizations") {
     const auth = await authenticateMcpToken(tokenHash);
     return auth.organizations;

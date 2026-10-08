@@ -3,15 +3,15 @@ import { mutation, query } from "./_generated/server";
 import { requireMcpToken } from "./mcpAuth";
 const permissionValidator=v.union(v.literal("read"),v.literal("write"),v.literal("admin"));
 export const authorize = mutation({
-  args:{tokenHash:v.string(),permission:permissionValidator,organizationSlug:v.optional(v.string())},
+  args:{tokenHash:v.string(),permission:permissionValidator,toolName:v.string(),organizationSlug:v.optional(v.string())},
   handler:async(ctx,args)=>{
     const token=await requireMcpToken(ctx,args.tokenHash);
     const permission=token.permission??"admin";
     if(args.permission==="admin"&&permission!=="admin")throw new Error("Admin-scoped MCP token required.");
     if(args.permission==="write"&&permission==="read")throw new Error("Write-scoped MCP token required.");
     if(token.organizationId){
-      if(!args.organizationSlug)return {allowed:true};
-      const org=await ctx.db.query("organizations").withIndex("by_slug",q=>q.eq("slug",args.organizationSlug!.trim().toLowerCase())).unique();
+      if(!args.organizationSlug && args.toolName!=="list_organizations")throw new Error("This token is restricted to one workspace.");
+      const org=args.organizationSlug ? await ctx.db.query("organizations").withIndex("by_slug",q=>q.eq("slug",args.organizationSlug!.trim().toLowerCase())).unique() : await ctx.db.get(token.organizationId);
       if(!org||org._id!==token.organizationId)throw new Error("Token cannot access that workspace.");
     }
     const now=Date.now(),reset=!token.rateWindowAt||now-token.rateWindowAt>=60000;

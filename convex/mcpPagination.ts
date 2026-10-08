@@ -18,25 +18,25 @@ export const pageCompanies=query({args:pageArgs,handler:async(ctx,args)=>{
 }});
 export const pageContacts=query({args:{...pageArgs,status:v.optional(contactStatusValidator),companyId:v.optional(v.id("companies"))},handler:async(ctx,args)=>{
   const {org}=await organization(ctx,args.tokenHash,args.organizationSlug);
-  if(args.companyId)return await ctx.db.query("contacts").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
+  if(args.companyId)return await ctx.db.query("contacts").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId!)).order("desc").paginate(opts(args));
   const status=args.status;
-  if(status)return await ctx.db.query("contacts").withIndex("by_organization_and_status",q=>q.eq("organizationId",org._id).eq("status",args.status)).order("desc").paginate(opts(args));
+  if(status)return await ctx.db.query("contacts").withIndex("by_organization_and_status",q=>q.eq("organizationId",org._id).eq("status",args.status!)).order("desc").paginate(opts(args));
   return await ctx.db.query("contacts").withIndex("by_organization",q=>q.eq("organizationId",org._id)).order("desc").paginate(opts(args));
 }});
 export const pageDeals=query({args:{...pageArgs,stage:v.optional(dealStageValidator),companyId:v.optional(v.id("companies")),pipelineId:v.optional(v.id("pipelines"))},handler:async(ctx,args)=>{
   const {org}=await organization(ctx,args.tokenHash,args.organizationSlug);
   const stage=args.stage;
   const companyId=args.companyId;
-  if(stage)return await ctx.db.query("deals").withIndex("by_organization_and_stage",q=>q.eq("organizationId",org._id).eq("stage",args.stage)).order("desc").paginate(opts(args));
-  if(companyId)return await ctx.db.query("deals").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
-  if(args.pipelineId)return await ctx.db.query("deals").withIndex("by_organization_and_pipeline",q=>q.eq("organizationId",org._id).eq("pipelineId",args.pipelineId)).order("desc").paginate(opts(args));
+  if(stage)return await ctx.db.query("deals").withIndex("by_organization_and_stage",q=>q.eq("organizationId",org._id).eq("stage",args.stage!)).order("desc").paginate(opts(args));
+  if(companyId)return await ctx.db.query("deals").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId!)).order("desc").paginate(opts(args));
+  if(args.pipelineId)return await ctx.db.query("deals").withIndex("by_organization_and_pipeline",q=>q.eq("organizationId",org._id).eq("pipelineId",args.pipelineId!)).order("desc").paginate(opts(args));
   return await ctx.db.query("deals").withIndex("by_organization",q=>q.eq("organizationId",org._id)).order("desc").paginate(opts(args));
 }});
 export const pageActivities=query({args:{...pageArgs,companyId:v.optional(v.id("companies")),contactId:v.optional(v.id("contacts")),dealId:v.optional(v.id("deals"))},handler:async(ctx,args)=>{
   const {org}=await organization(ctx,args.tokenHash,args.organizationSlug);
-  if(args.companyId)return await ctx.db.query("activities").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
-  if(args.contactId)return await ctx.db.query("activities").withIndex("by_organization_and_contact",q=>q.eq("organizationId",org._id).eq("contactId",args.contactId)).order("desc").paginate(opts(args));
-  if(args.dealId)return await ctx.db.query("activities").withIndex("by_organization_and_deal",q=>q.eq("organizationId",org._id).eq("dealId",args.dealId)).order("desc").paginate(opts(args));
+  if(args.companyId)return await ctx.db.query("activities").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId!)).order("desc").paginate(opts(args));
+  if(args.contactId)return await ctx.db.query("activities").withIndex("by_organization_and_contact",q=>q.eq("organizationId",org._id).eq("contactId",args.contactId!)).order("desc").paginate(opts(args));
+  if(args.dealId)return await ctx.db.query("activities").withIndex("by_organization_and_deal",q=>q.eq("organizationId",org._id).eq("dealId",args.dealId!)).order("desc").paginate(opts(args));
   return await ctx.db.query("activities").withIndex("by_organization",q=>q.eq("organizationId",org._id)).order("desc").paginate(opts(args));
 }});
 export const searchAllCompanies=query({
