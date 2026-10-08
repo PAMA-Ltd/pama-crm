@@ -187,6 +187,13 @@ export default defineSchema({
     .index("by_contact", ["contactId"])
     .index("by_sequence_and_contact", ["sequenceId", "contactId"]),
 
+  mcpAudit: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    actorSubject: v.string(),
+    toolName: v.string(),
+    targetId: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_organization_and_created", ["organizationId", "createdAt"]),
   mcpTokens: defineTable({
     userSubject: v.string(),
     label: v.string(),
@@ -194,6 +201,11 @@ export default defineSchema({
     tokenPrefix: v.string(),
     createdAt: v.number(),
     revokedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    permission: v.optional(v.union(v.literal("read"),v.literal("write"),v.literal("admin"))),
+    organizationId: v.optional(v.id("organizations")),
+    rateWindowAt: v.optional(v.number()),
+    rateCalls: v.optional(v.number()),
   })
     .index("by_hash", ["tokenHash"])
     .index("by_user", ["userSubject"]),

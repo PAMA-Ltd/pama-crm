@@ -63,6 +63,7 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+{"name":"list_mcp_audit","description":"List recent AI CRM modifications within a workspace (admin only).","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":250}},"required":["organizationSlug"],"additionalProperties":false}},
   {"name":"create_organization","description":"Create a new workspace and default pipeline. The token holder becomes its owner.","inputSchema":{"type":"object","properties":{"name":{"type":"string"},"slug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["name"],"additionalProperties":false}},
   {"name":"update_organization","description":"Update workspace identity; requires organization admin.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"newSlug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
   {"name":"archive_organization","description":"Archive a workspace; requires owner and explicit slug confirmation.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"confirmSlug":{"type":"string"}},"required":["organizationSlug","confirmSlug"],"additionalProperties":false}},
@@ -668,6 +669,7 @@ const operationMap: Record<
   string,
   { kind: "query" | "mutation"; fn: string }
 > = {
+  list_mcp_audit: { kind: "query", fn: "mcpSecurity:listAudit" },
   get_organization_summary: { kind: "query", fn: "mcp:organizationSummary" },
   create_organization: { kind: "mutation", fn: "mcpExpanded:createOrganization" },
   update_organization: { kind: "mutation", fn: "mcpExpanded:updateOrganization" },
@@ -749,16 +751,19 @@ export async function callMcpTool(
   input: JsonObject,
   tokenHash: string,
 ) {
+  const client=convexClient();
+  const operation=operationMap[name];
+  if(name!=="list_organizations"&&!operation)throw new Error("Unknown MCP tool: "+name);
+  const adminTools=new Set(["create_organization","update_organization","archive_organization","list_organization_invitations","invite_organization_member","change_member_role","create_team","assign_member_team","delete_team","update_pipeline","create_pipeline","delete_pipeline","create_email_sequence","update_email_sequence","delete_email_sequence","list_mcp_audit"]);
+  const permission=adminTools.has(name)?"admin":operation?.kind==="mutation"?"write":"read";
+  await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
   if (name === "list_organizations") {
     const auth = await authenticateMcpToken(tokenHash);
     return auth.organizations;
   }
 
-  const operation = operationMap[name];
-  if (!operation) throw new Error(`Unknown MCP tool: ${name}`);
-
+  if (!operation) throw new Error("Unknown MCP tool: "+name);
   const args: JsonObject = { ...input, tokenHash };
-  const client = convexClient();
 
   if (operation.kind === "query") {
     const reference = makeFunctionReference<
@@ -774,5 +779,11 @@ export async function callMcpTool(
     JsonObject,
     unknown
   >(operation.fn);
-  return await client.mutation(reference, args);
+  const result=await client.mutation(reference,args);
+  try{
+    const data=result as Record<string,unknown> | null;
+    const targetId=data&&(data.id??data.companyId??data.contactId??data.dealId??data.activityId??data.teamId??data.memberId??data.sequenceId);
+    await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:audit"),{tokenHash,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined,targetId:typeof targetId==="string"?targetId:undefined});
+  }catch(error){console.error("MCP audit failed",error);}
+  return result;
 }
