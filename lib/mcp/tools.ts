@@ -4,6 +4,7 @@ import { makeFunctionReference } from "convex/server";
 type ToolDefinition = {
   name: string;
   description: string;
+  securitySchemes?: Array<{ type: "oauth2"; scopes: string[] }>;
   inputSchema: {
     type: "object";
     properties: Record<string, unknown>;
@@ -62,7 +63,7 @@ const companyTags = {
   },
 };
 
-export const MCP_TOOLS: ToolDefinition[] = [
+const BASE_MCP_TOOLS: ToolDefinition[] = [
 {"name":"import_contacts","description":"Bulk import up to 100 contacts with duplicate email reporting. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"firstName":{"type":"string"},"lastName":{"type":"string"},"email":{"type":"string"},"phone":{"type":"string"},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]},"notes":{"type":"string"}},"required":["firstName","lastName"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
 {"name":"import_deals","description":"Bulk import up to 100 deals with company metric refresh. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"name":{"type":"string"},"companyId":{"type":"string"},"contactId":{"type":"string"},"pipelineId":{"type":"string"},"amount":{"type":"number","minimum":0},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]},"expectedCloseDate":{"type":"string"},"notes":{"type":"string"}},"required":["name","companyId","amount","stage"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
 {"name":"send_contact_email","description":"Send actual email to a CRM contact through Mailjet. Requires explicit confirmSend=true, outbound email enabled and a write token.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"},"subject":{"type":"string"},"body":{"type":"string"},"confirmSend":{"type":"boolean"}},"required":["organizationSlug","contactId","subject","body","confirmSend"],"additionalProperties":false}},
@@ -748,6 +749,32 @@ const operationMap: Record<
   attention_summary: { kind: "query", fn: "mcp:attentionSummary" },
 };
 
+const ADMIN_TOOLS = new Set([
+  "create_organization", "update_organization", "archive_organization",
+  "list_organization_invitations", "invite_organization_member",
+  "change_member_role", "create_team", "assign_member_team", "delete_team",
+  "update_pipeline", "create_pipeline", "delete_pipeline",
+  "create_email_sequence", "update_email_sequence", "delete_email_sequence",
+  "list_mcp_audit",
+]);
+
+export function permissionForTool(name: string): "read" | "write" | "admin" {
+  if (ADMIN_TOOLS.has(name)) return "admin";
+  const operation = operationMap[name];
+  return operation?.kind === "mutation" || operation?.kind === "action" ? "write" : "read";
+}
+
+// Advertise explicit OAuth requirements to clients so ChatGPT can request
+// consent and upgrade scopes appropriately. Runtime authorization still happens
+// in Convex: metadata alone does not grant permission.
+export const MCP_TOOLS: ToolDefinition[] = BASE_MCP_TOOLS.map((tool) => ({
+  ...tool,
+  securitySchemes: [{
+    type: "oauth2",
+    scopes: [`crm:${permissionForTool(tool.name)}`],
+  }],
+}));
+
 function convexClient() {
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
   if (!url) throw new Error("NEXT_PUBLIC_CONVEX_URL is not configured.");
@@ -782,8 +809,7 @@ export async function callMcpTool(
   const client=convexClient();
   const operation=operationMap[name];
   if(name!=="list_organizations"&&!operation)throw new Error("Unknown MCP tool: "+name);
-  const adminTools=new Set(["create_organization","update_organization","archive_organization","list_organization_invitations","invite_organization_member","change_member_role","create_team","assign_member_team","delete_team","update_pipeline","create_pipeline","delete_pipeline","create_email_sequence","update_email_sequence","delete_email_sequence","list_mcp_audit"]);
-  const permission=adminTools.has(name)?"admin":(operation?.kind==="mutation" || operation?.kind==="action")?"write":"read";
+  const permission = permissionForTool(name);
   await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
   if (name === "list_organizations") {
     const auth = await authenticateMcpToken(tokenHash);

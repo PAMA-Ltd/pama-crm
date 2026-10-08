@@ -20,6 +20,7 @@ import type * as emailSequences from "../emailSequences.js";
 import type * as mcp from "../mcp.js";
 import type * as mcpBulk from "../mcpBulk.js";
 import type * as mcpMail from "../mcpMail.js";
+import type * as mcpOAuth from "../mcpOAuth.js";
 import type * as mcpPagination from "../mcpPagination.js";
 import type * as mcpSecurity from "../mcpSecurity.js";
 import type * as mcpExpanded from "../mcpExpanded.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   mcp: typeof mcp;
   mcpBulk: typeof mcpBulk;
   mcpMail: typeof mcpMail;
+  mcpOAuth: typeof mcpOAuth;
   mcpPagination: typeof mcpPagination;
   mcpSecurity: typeof mcpSecurity;
   mcpExpanded: typeof mcpExpanded;

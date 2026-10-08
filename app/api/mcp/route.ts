@@ -1,5 +1,7 @@
+import { authenticateOAuthBearer } from "@/lib/mcp/oauth";
 import {
   MCP_TOOLS,
+  permissionForTool,
   authenticateMcpToken,
   callMcpTool,
 } from "@/lib/mcp/tools";
@@ -69,8 +71,21 @@ function readBearer(request: Request) {
   const authorization = request.headers.get("authorization") ?? "";
   const [scheme, token] = authorization.split(/\s+/, 2);
   if (scheme?.toLocaleLowerCase() !== "bearer" || !token) return null;
-  if (!token.startsWith("pama_mcp_")) return null;
   return token;
+}
+
+function unauthorized(request: Request, message: string) {
+  const resourceMetadata = new URL(
+    "/.well-known/oauth-protected-resource/api/mcp",
+    request.url,
+  ).toString();
+  return Response.json({ error: message }, {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": `Bearer resource_metadata="${resourceMetadata}"`,
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 async function sha256Hex(value: string) {
@@ -97,37 +112,30 @@ function chooseProtocol(requested?: unknown) {
 
 async function handle(request: Request) {
   const token = readBearer(request);
-  if (!token) {
-    return new Response(
-      JSON.stringify({
-        error: "A valid Pama CRM MCP bearer token is required.",
-      }),
-      {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "WWW-Authenticate": 'Bearer realm="Pama CRM MCP"',
-          "Cache-Control": "no-store",
-        },
-      },
-    );
-  }
+  if (!token) return unauthorized(request, "OAuth sign-in or a Pama CRM MCP bearer token is required.");
 
-  const tokenHash = await sha256Hex(token);
-  try {
-    await authenticateMcpToken(tokenHash);
-  } catch {
-    return new Response(
-      JSON.stringify({ error: "Invalid or revoked MCP token." }),
-      {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          "WWW-Authenticate": 'Bearer realm="Pama CRM MCP"',
-          "Cache-Control": "no-store",
-        },
-      },
-    );
+  let tokenHash: string;
+  if (token.startsWith("pama_mcp_")) {
+    // Existing personal access tokens continue to work unchanged.
+    tokenHash = await sha256Hex(token);
+    try {
+      await authenticateMcpToken(tokenHash);
+    } catch {
+      return unauthorized(request, "Invalid or revoked Pama CRM MCP token.");
+    }
+  } else {
+    try {
+      const oauth = await authenticateOAuthBearer(token);
+      if (!oauth) return unauthorized(request, "Invalid or expired Clerk OAuth access token.");
+      tokenHash = oauth.tokenHash;
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("The OAuth client has no CRM scope")) {
+        return Response.json({ error: error.message }, { status: 403, headers: { "WWW-Authenticate": 'Bearer error="insufficient_scope", scope="crm:read"' } });
+      }
+      // Fail closed without exposing backend secrets, identity, or sensitive details.
+      console.error("Pama CRM MCP OAuth verification or bridge failed:", error instanceof Error ? error.name : "unknown");
+      return unauthorized(request, "OAuth authentication failed; check CRM OAuth configuration.");
+    }
   }
 
   let body: JsonRpcRequest;
@@ -217,10 +225,18 @@ async function handle(request: Request) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Tool call failed.";
+      const permission = permissionForTool(name);
+      const insufficientScope = /-scoped MCP token required|OAuth access token must include a CRM scope/.test(message);
+      const metadataUrl = new URL(
+        "/.well-known/oauth-protected-resource/api/mcp",
+        request.url,
+      ).toString();
+      const challenge = `Bearer resource_metadata="${metadataUrl}", error="insufficient_scope", error_description="Additional CRM access is required", scope="crm:${permission}"`;
       return jsonRpc(
         body.id,
         {
           content: [{ type: "text", text: message }],
+          ...(insufficientScope ? { _meta: { "mcp/www_authenticate": [challenge] } } : {}),
           isError: true,
         },
         200,
@@ -236,7 +252,10 @@ export async function POST(request: Request) {
   return await handle(request);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!readBearer(request)) {
+    return unauthorized(request, "OAuth sign-in or a Pama CRM MCP bearer token is required.");
+  }
   return new Response(
     JSON.stringify({
       name: "Pama CRM MCP",

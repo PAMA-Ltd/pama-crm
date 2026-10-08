@@ -32,7 +32,8 @@
     "react-use-measure": "^2.1.7",
     "swiper": "^12.0.2",
     "tailwind-merge": "^3.3.1",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.11",
+    "@clerk/mcp-tools": "^0.6.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",

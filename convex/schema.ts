@@ -221,7 +221,9 @@ export default defineSchema({
     organizationId: v.optional(v.id("organizations")),
     rateWindowAt: v.optional(v.number()),
     rateCalls: v.optional(v.number()),
+    oauthSession: v.optional(v.boolean()),
   })
     .index("by_hash", ["tokenHash"])
-    .index("by_user", ["userSubject"]),
+    .index("by_user", ["userSubject"])
+    .index("by_oauth_session_and_expiration", ["oauthSession", "expiresAt"]),
 });

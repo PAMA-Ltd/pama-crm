@@ -25,3 +25,27 @@ Mailjet acceptance is not proof of mailbox delivery. The email log records accep
 
 ## Deployment
 Deploy Convex schema/functions/crons first. Deploy Next.js front end afterward. Do not enable outbound until the deployment is verified. Never place Mailjet private keys in public Next.js environment variables.
+
+
+## Connect with OAuth (ChatGPT, Claude, Cursor, other MCP clients)
+
+**URL:** `https://crm.pama.company/api/mcp`
+
+Pama CRM supports **Clerk-issued OAuth 2.1 access tokens** alongside existing `pama_mcp_` personal tokens. The Next.js MCP route verifies Clerk OAuth tokens on *every request* and binds their verified Clerk user ID to the existing Convex organization authorization. No CRM data becomes public, and OAuth cannot bypass workspace membership.
+
+### One-time server configuration
+
+1. In **Clerk Dashboard → OAuth applications → Settings → Client onboarding**, enable **Publish CIMD support** (recommended for ChatGPT and modern MCP clients). Enable **Publish DCR support** only if you need compatibility with older clients; it exposes unauthenticated client registration. **Require PKCE** for all clients and keep the OAuth consent screen enabled.
+2. Define **custom OAuth scopes** `crm:read`, `crm:write`, and `crm:admin` in Clerk. Set the **default scopes for dynamic clients** to `openid`, `profile`, `email`, and `crm:read`. OAuth clients must explicitly request `crm:write` for mutations or `crm:admin` for admin-only operations. Grant these scopes to registered clients as required. Do not grant admin by default. To allow unattended token refresh for compatible clients, enable the optional `offline_access` scope in Clerk.
+3. Generate a high-entropy secret (`openssl rand -hex 32`) and set `CRM_MCP_OAUTH_BRIDGE_SECRET` as a **sensitive Vercel Production** variable. The production build synchronizes it to Convex securely via stdin before deploying the backend. Never commit the value or put it in the build command.
+4. Configure Vercel production build to run `node scripts/sync-convex-oauth-env.mjs && npx convex deploy && npm run build` in this order. Preview builds only run `npm run build`. The sync script fails closed if the production key or secret is missing.
+5. Ensure `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY` are set correctly for the same production Clerk/Convex environments.
+
+### Discovery and validation
+
+- MCP endpoint: `https://crm.pama.company/api/mcp`
+- Protected resource metadata: `https://crm.pama.company/.well-known/oauth-protected-resource/api/mcp` (also at the root RFC 9728 path)
+- Authorization server metadata: `https://crm.pama.company/.well-known/oauth-authorization-server` (proxies Clerk's OAuth metadata)
+- Unauthenticated MCP POST should return **401** with the correct `WWW-Authenticate: Bearer resource_metadata="..."` header, not a 500.
+- Log in to ChatGPT with a CRM user via OAuth consent and confirm `list_organizations` only shows organizations belonging to that user. Test `crm:read` (read tools only), `crm:write` (mutations), `crm:admin` (admin operations). Repeat with a nonmember account. Existing `pama_mcp_` token clients must still work.
+- An OAuth token with missing CRM scopes gets a 403; a missing/invalid/expired OAuth token gets a 401. OAuth sessions are short-lived Convex bridge records, refreshed only by newly verified Clerk requests, and cleaned hourly.
