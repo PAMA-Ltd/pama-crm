@@ -63,6 +63,22 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+  {"name":"create_organization","description":"Create a new workspace and default pipeline. The token holder becomes its owner.","inputSchema":{"type":"object","properties":{"name":{"type":"string"},"slug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["name"],"additionalProperties":false}},
+  {"name":"update_organization","description":"Update workspace identity; requires organization admin.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"newSlug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
+  {"name":"archive_organization","description":"Archive a workspace; requires owner and explicit slug confirmation.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"confirmSlug":{"type":"string"}},"required":["organizationSlug","confirmSlug"],"additionalProperties":false}},
+  {"name":"list_organization_invitations","description":"List workspace invitations; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"}},"required":["organizationSlug"],"additionalProperties":false}},
+  {"name":"invite_organization_member","description":"Create a workspace invitation. Does not send an email.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"email":{"type":"string"},"role":{"type":"string","enum":["owner","admin","member"]}},"required":["organizationSlug","email","role"],"additionalProperties":false}},
+  {"name":"change_member_role","description":"Change an existing member role; owner only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"memberId":{"type":"string"},"role":{"type":"string","enum":["owner","admin","member"]}},"required":["organizationSlug","memberId","role"],"additionalProperties":false}},
+  {"name":"create_team","description":"Create workspace team; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
+  {"name":"assign_member_team","description":"Assign member to team or unlink with null; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"memberId":{"type":"string"},"teamId":{"type":["string","null"]}},"required":["organizationSlug","memberId","teamId"],"additionalProperties":false}},
+  {"name":"delete_team","description":"Delete empty team; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"teamId":{"type":"string"}},"required":["organizationSlug","teamId"],"additionalProperties":false}},
+  {"name":"update_pipeline","description":"Update pipeline name/description; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"pipelineId":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"required":["organizationSlug","pipelineId","name"],"additionalProperties":false}},
+  {"name":"get_company","description":"Get company details and up to 100 related records for each relation.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"companyId":{"type":"string"}},"required":["organizationSlug","companyId"],"additionalProperties":false}},
+  {"name":"get_contact","description":"Retrieve full contact by ID.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"}},"required":["organizationSlug","contactId"],"additionalProperties":false}},
+  {"name":"get_deal","description":"Retrieve full deal by ID.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"dealId":{"type":"string"}},"required":["organizationSlug","dealId"],"additionalProperties":false}},
+  {"name":"get_company_insights","description":"Get company engagement, deal health and counts.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"companyId":{"type":"string"},"days":{"type":"number","minimum":7,"maximum":90}},"required":["organizationSlug","companyId"],"additionalProperties":false}},
+  {"name":"list_notifications","description":"List CRM activity notifications.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+  {"name":"set_sequence_enrollment_status","description":"Pause, resume or unsubscribe an enrollment.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"enrollmentId":{"type":"string"},"status":{"type":"string","enum":["active","paused","completed","unsubscribed"]}},"required":["organizationSlug","enrollmentId","status"],"additionalProperties":false}},
   {
     name: "list_organizations",
     description:
@@ -653,6 +669,22 @@ const operationMap: Record<
   { kind: "query" | "mutation"; fn: string }
 > = {
   get_organization_summary: { kind: "query", fn: "mcp:organizationSummary" },
+  create_organization: { kind: "mutation", fn: "mcpExpanded:createOrganization" },
+  update_organization: { kind: "mutation", fn: "mcpExpanded:updateOrganization" },
+  archive_organization: { kind: "mutation", fn: "mcpExpanded:archiveOrganization" },
+  list_organization_invitations: { kind: "query", fn: "mcpExpanded:listInvitations" },
+  invite_organization_member: { kind: "mutation", fn: "mcpExpanded:inviteMember" },
+  change_member_role: { kind: "mutation", fn: "mcpExpanded:changeMemberRole" },
+  create_team: { kind: "mutation", fn: "mcpExpanded:createTeam" },
+  assign_member_team: { kind: "mutation", fn: "mcpExpanded:assignTeam" },
+  delete_team: { kind: "mutation", fn: "mcpExpanded:deleteTeam" },
+  update_pipeline: { kind: "mutation", fn: "mcpExpanded:updatePipeline" },
+  get_company: { kind: "query", fn: "mcpExpanded:getCompany" },
+  get_contact: { kind: "query", fn: "mcpExpanded:getContact" },
+  get_deal: { kind: "query", fn: "mcpExpanded:getDeal" },
+  get_company_insights: { kind: "query", fn: "mcpExpanded:getCompanyInsights" },
+  list_notifications: { kind: "query", fn: "mcpExpanded:notifications" },
+  set_sequence_enrollment_status: { kind: "mutation", fn: "mcpExpanded:updateSequenceEnrollment" },
   search_companies: { kind: "query", fn: "mcp:searchCompanies" },
   create_company: { kind: "mutation", fn: "mcp:createCompany" },
   update_company: { kind: "mutation", fn: "mcp:updateCompany" },
