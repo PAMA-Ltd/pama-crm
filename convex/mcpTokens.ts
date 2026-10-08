@@ -22,9 +22,10 @@ export const listMine = query({
       .query("mcpTokens")
       .withIndex("by_user", (q) => q.eq("userSubject", identity.subject))
       .order("desc")
-      .take(100);
+      .take(300);
 
-    return tokens.map((token) => ({
+    // Ephemeral OAuth bridge sessions are not user-created API keys.
+    return tokens.filter((token) => !token.oauthSession).slice(0, 100).map((token) => ({
       _id: token._id,
       label: token.label,
       tokenPrefix: token.tokenPrefix,
