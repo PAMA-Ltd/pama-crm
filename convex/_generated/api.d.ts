@@ -18,6 +18,7 @@ import type * as crmModels from "../crmModels.js";
 import type * as deals from "../deals.js";
 import type * as emailSequences from "../emailSequences.js";
 import type * as mcp from "../mcp.js";
+import type * as mcpBulk from "../mcpBulk.js";
 import type * as mcpMail from "../mcpMail.js";
 import type * as mcpPagination from "../mcpPagination.js";
 import type * as mcpSecurity from "../mcpSecurity.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   deals: typeof deals;
   emailSequences: typeof emailSequences;
   mcp: typeof mcp;
+  mcpBulk: typeof mcpBulk;
   mcpMail: typeof mcpMail;
   mcpPagination: typeof mcpPagination;
   mcpSecurity: typeof mcpSecurity;

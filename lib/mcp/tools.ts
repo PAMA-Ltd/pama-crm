@@ -63,6 +63,8 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+{"name":"import_contacts","description":"Bulk import up to 100 contacts with duplicate email reporting. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"firstName":{"type":"string"},"lastName":{"type":"string"},"email":{"type":"string"},"phone":{"type":"string"},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]},"notes":{"type":"string"}},"required":["firstName","lastName"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
+{"name":"import_deals","description":"Bulk import up to 100 deals with company metric refresh. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"name":{"type":"string"},"companyId":{"type":"string"},"contactId":{"type":"string"},"pipelineId":{"type":"string"},"amount":{"type":"number","minimum":0},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]},"expectedCloseDate":{"type":"string"},"notes":{"type":"string"}},"required":["name","companyId","amount","stage"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
 {"name":"send_contact_email","description":"Send actual email to a CRM contact through Mailjet. Requires explicit confirmSend=true, outbound email enabled and a write token.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"},"subject":{"type":"string"},"body":{"type":"string"},"confirmSend":{"type":"boolean"}},"required":["organizationSlug","contactId","subject","body","confirmSend"],"additionalProperties":false}},
 {"name":"list_email_events","description":"View Mailjet-accepted email delivery events.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
 {"name":"list_sequence_enrollments","description":"List contact enrollments and progress for an email sequence.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"sequenceId":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":500}},"required":["organizationSlug","sequenceId"],"additionalProperties":false}},
@@ -690,6 +692,8 @@ const operationMap: Record<
   search_all_deals: { kind: "query", fn: "mcpPagination:searchAllDeals" },
   bulk_complete_activities: { kind: "mutation", fn: "mcpPagination:bulkCompleteActivities" },
   bulk_update_contact_status: { kind: "mutation", fn: "mcpPagination:bulkUpdateContactStatus" },
+  import_contacts: { kind:"mutation", fn:"mcpBulk:importContacts" },
+  import_deals: { kind:"mutation", fn:"mcpBulk:importDeals" },
   send_contact_email: { kind:"action", fn:"mcpMail:sendContactEmail" },
   list_email_events: { kind:"query", fn:"mcpMail:listEmailEvents" },
   list_sequence_enrollments: { kind:"query", fn:"mcpMail:listEnrollments" },
