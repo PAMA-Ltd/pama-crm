@@ -21,7 +21,7 @@ Add these to **Convex deployment environment**, not Vercel:
 
 All sending is OFF by default. The sequence cron checks every 15 minutes and only processes active sequences with active enrollments. Paused and cancelled enrollments are not sent. Manual send_contact_email requires confirmSend=true. Set the keys, verify a sender and test with a controlled contact before enabling CRM_AUTOMATION_ENABLED.
 
-Mailjet acceptance is not proof of mailbox delivery. The email log records accepted messages, not inbox success. Mailjet may accept a message even if the result/confirmation fails, so delayed retries should be reviewed for duplicates.
+Mailjet acceptance is not proof of mailbox delivery. The email log records accepted messages, not inbox success. Failed or ambiguous sequence sends pause the enrollment for manual review instead of blindly retrying. After checking Mailjet delivery, resume with set_sequence_enrollment_status and confirmRetry=true. Manual email sends may still be accepted even when logging fails; check Mailjet before retrying.
 
 ## Deployment
 Deploy Convex schema/functions/crons first. Deploy Next.js front end afterward. Do not enable outbound until the deployment is verified. Never place Mailjet private keys in public Next.js environment variables.

@@ -89,7 +89,7 @@ export const claim=internalMutation({
   args:{enrollmentId:v.id("sequenceEnrollments")},
   handler:async(ctx,args)=>{
     const row=await ctx.db.get(args.enrollmentId);
-    if(!row||row.status!=="active"||!row.nextStepAt||row.nextStepAt>Date.now()||(row.sendLockedAt&&Date.now()-row.sendLockedAt<20*60000))return null;
+    if(!row||row.status!=="active"||!row.nextStepAt||row.nextStepAt>Date.now()||row.sendLockedAt)return null;
     const [sequence,contact,org]=await Promise.all([ctx.db.get(row.sequenceId),ctx.db.get(row.contactId),ctx.db.get(row.organizationId)]);
     if(!sequence||sequence.status!=="active"||!contact?.email||!org||org.status!=="active"){
       await ctx.db.patch(row._id,{status:"paused",lastError:"Sequence paused, contact missing email or workspace inactive.",updatedAt:Date.now()});
@@ -108,8 +108,8 @@ export const finish=internalMutation({
     const row=await ctx.db.get(args.enrollmentId);
     if(!row||row.sendLockedAt!==args.lockedAt||row.currentStep!==args.stepIndex)return null;
     if(!args.success){
-      await ctx.db.patch(row._id,{sendLockedAt:undefined,nextStepAt:Date.now()+60*60000,lastError:args.error?.slice(0,200),updatedAt:Date.now()});
-      return {success:false,retryAt:Date.now()+60*60000};
+      await ctx.db.patch(row._id,{status:"paused",sendLockedAt:undefined,nextStepAt:undefined,lastError:"Mail provider outcome requires review: "+(args.error??"Unknown failure").slice(0,180),updatedAt:Date.now()});
+      return {success:false,manualReviewRequired:true};
     }
     const sequence=await ctx.db.get(row.sequenceId);
     if(!sequence)return null;

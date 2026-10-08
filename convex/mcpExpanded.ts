@@ -197,12 +197,17 @@ export const notifications = query({
   }
 });
 export const updateSequenceEnrollment = mutation({
-  args:{tokenHash:v.string(),organizationSlug:v.string(),enrollmentId:v.id("sequenceEnrollments"),status:enrollmentStatusValidator},
+  args:{tokenHash:v.string(),organizationSlug:v.string(),enrollmentId:v.id("sequenceEnrollments"),status:enrollmentStatusValidator,confirmRetry:v.optional(v.boolean())},
   handler:async(ctx,args)=>{
     const {org}=await workspace(ctx,args.tokenHash,args.organizationSlug);
     const enrollment=await ctx.db.get(args.enrollmentId);
     if(!enrollment||enrollment.organizationId!==org._id)throw new Error("Enrollment not found.");
-    await ctx.db.patch(args.enrollmentId,{status:args.status,updatedAt:Date.now()});
+    if(args.status==="active"&&enrollment.lastError&&args.confirmRetry!==true)throw new Error("Delivery outcome is uncertain. Review the provider first; pass confirmRetry=true to resume.");
+    await ctx.db.patch(args.enrollmentId,{status:args.status,
+      nextStepAt:args.status==="active"?Date.now():enrollment.nextStepAt,
+      sendLockedAt:args.status==="active"?undefined:enrollment.sendLockedAt,
+      lastError:args.status==="active"?undefined:enrollment.lastError,
+      updatedAt:Date.now()});
     return {id:args.enrollmentId,status:args.status};
   }
 });
