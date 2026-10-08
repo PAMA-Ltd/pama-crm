@@ -37,8 +37,8 @@ Pama CRM supports **Clerk-issued OAuth 2.1 access tokens** alongside existing `p
 
 1. In **Clerk Dashboard → OAuth applications → Settings → Client onboarding**, enable **Publish CIMD support** (recommended for ChatGPT and modern MCP clients). Enable **Publish DCR support** only if you need compatibility with older clients; it exposes unauthenticated client registration. **Require PKCE** for all clients and keep the OAuth consent screen enabled.
 2. Define **custom OAuth scopes** `crm:read`, `crm:write`, and `crm:admin` in Clerk. Set the **default scopes for dynamic clients** to `openid`, `profile`, `email`, and `crm:read`. OAuth clients must explicitly request `crm:write` for mutations or `crm:admin` for admin-only operations. Grant these scopes to registered clients as required. Do not grant admin by default. To allow unattended token refresh for compatible clients, enable the optional `offline_access` scope in Clerk.
-3. Generate a high-entropy shared secret: `openssl rand -hex 32`. Set the **same value** as `CRM_MCP_OAUTH_BRIDGE_SECRET` in **Vercel Production** (sensitive type) and **Convex Production** (`npx convex env set CRM_MCP_OAUTH_BRIDGE_SECRET <value> --prod`). Do not commit this secret.
-4. Deploy Convex functions/schema/crons before updating Next.js (`npx convex deploy`). Vercel's production build must run Convex deploy before Next.js build, as configured.
+3. Generate a high-entropy secret (`openssl rand -hex 32`) and set `CRM_MCP_OAUTH_BRIDGE_SECRET` as a **sensitive Vercel Production** variable. The production build synchronizes it to Convex securely via stdin before deploying the backend. Never commit the value or put it in the build command.
+4. Configure Vercel production build to run `node scripts/sync-convex-oauth-env.mjs && npx convex deploy && npm run build` in this order. Preview builds only run `npm run build`. The sync script fails closed if the production key or secret is missing.
 5. Ensure `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY` are set correctly for the same production Clerk/Convex environments.
 
 ### Discovery and validation
