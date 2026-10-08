@@ -83,7 +83,8 @@ export default defineSchema({
       "organizationId",
       "normalizedName",
     ])
-    .index("by_organization_and_owner", ["organizationId", "ownerSubject"]),
+    .index("by_organization_and_owner", ["organizationId", "ownerSubject"])
+    .searchIndex("search_company",{searchField:"name",filterFields:["organizationId"]}),
 
   contacts: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -110,7 +111,8 @@ export default defineSchema({
     .index("by_organization_and_email", [
       "organizationId",
       "normalizedEmail",
-    ]),
+    ])
+    .searchIndex("search_contact",{searchField:"normalizedName",filterFields:["organizationId"]}),
 
   deals: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -133,7 +135,8 @@ export default defineSchema({
     .index("by_organization_and_company", ["organizationId", "companyId"])
     .index("by_organization_and_contact", ["organizationId", "contactId"])
     .index("by_organization_and_stage", ["organizationId", "stage"])
-    .index("by_organization_and_pipeline", ["organizationId", "pipelineId"]),
+    .index("by_organization_and_pipeline", ["organizationId", "pipelineId"])
+    .searchIndex("search_deal",{searchField:"name",filterFields:["organizationId"]}),
 
   activities: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -162,6 +165,15 @@ export default defineSchema({
       "completedAt",
     ]),
 
+  emailEvents: defineTable({
+    organizationId: v.id("organizations"),
+    contactId: v.id("contacts"),
+    actorSubject: v.string(),
+    subject: v.string(),
+    providerMessageId: v.string(),
+    kind: v.union(v.literal("manual"),v.literal("sequence")),
+    createdAt: v.number(),
+  }).index("by_organization",["organizationId"]),
   emailSequences: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -178,6 +190,8 @@ export default defineSchema({
     contactId: v.id("contacts"),
     status: enrollmentStatusValidator,
     currentStep: v.number(),
+    sendLockedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
     nextStepAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -185,8 +199,16 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_sequence", ["sequenceId"])
     .index("by_contact", ["contactId"])
-    .index("by_sequence_and_contact", ["sequenceId", "contactId"]),
+    .index("by_sequence_and_contact", ["sequenceId", "contactId"])
+    .index("by_status_and_next", ["status", "nextStepAt"]),
 
+  mcpAudit: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    actorSubject: v.string(),
+    toolName: v.string(),
+    targetId: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_organization_and_created", ["organizationId", "createdAt"]),
   mcpTokens: defineTable({
     userSubject: v.string(),
     label: v.string(),
@@ -194,6 +216,11 @@ export default defineSchema({
     tokenPrefix: v.string(),
     createdAt: v.number(),
     revokedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+    permission: v.optional(v.union(v.literal("read"),v.literal("write"),v.literal("admin"))),
+    organizationId: v.optional(v.id("organizations")),
+    rateWindowAt: v.optional(v.number()),
+    rateCalls: v.optional(v.number()),
   })
     .index("by_hash", ["tokenHash"])
     .index("by_user", ["userSubject"]),

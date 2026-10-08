@@ -6,6 +6,9 @@ export type McpTokenRecord = {
   tokenPrefix: string;
   createdAt: number;
   revokedAt?: number;
+  expiresAt?: number;
+  permission?: "read" | "write" | "admin";
+  organizationId?: string;
 };
 
 export const listMcpTokens = makeFunctionReference<
@@ -16,7 +19,7 @@ export const listMcpTokens = makeFunctionReference<
 
 export const registerMcpToken = makeFunctionReference<
   "mutation",
-  { label: string; tokenHash: string; tokenPrefix: string },
+  { label: string; tokenHash: string; tokenPrefix: string; permission?: "read" | "write" | "admin"; expiresAt?: number; organizationId?: string },
   string
 >("mcpTokens:register");
 

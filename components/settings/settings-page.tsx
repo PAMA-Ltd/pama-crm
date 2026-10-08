@@ -45,6 +45,9 @@ export default function SettingsPage() {
   const [result, setResult] = useState<string | null>(null);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [tokenLabel, setTokenLabel] = useState("ChatGPT");
+  const [tokenPermission, setTokenPermission] = useState<"read"|"write"|"admin">("write");
+  const [tokenExpiryDays, setTokenExpiryDays] = useState(90);
+  const [tokenWorkspaceOnly, setTokenWorkspaceOnly] = useState(true);
   const [creatingToken, setCreatingToken] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("");
@@ -71,6 +74,9 @@ export default function SettingsPage() {
         label: tokenLabel.trim() || "MCP access",
         tokenHash: hash,
         tokenPrefix: raw.slice(0, 20),
+        permission: tokenPermission,
+        expiresAt: Date.now() + tokenExpiryDays * 86400000,
+        organizationId: tokenWorkspaceOnly ? organization._id : undefined,
       });
       setNewToken(raw);
     } finally {
@@ -205,6 +211,19 @@ export default function SettingsPage() {
               </Button>
             </div>
 
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <label className="text-sm">Access level
+                <select className="mt-1 w-full rounded-md border border-border bg-card p-2" value={tokenPermission} onChange={e=>setTokenPermission(e.target.value as "read"|"write"|"admin")}>
+                  <option value="read">Read only</option><option value="write">Read / write</option><option value="admin">Administration</option>
+                </select>
+              </label>
+              <label className="text-sm">Expiry
+                <select className="mt-1 w-full rounded-md border border-border bg-card p-2" value={tokenExpiryDays} onChange={e=>setTokenExpiryDays(Number(e.target.value))}>
+                  <option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={365}>1 year</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={tokenWorkspaceOnly} onChange={e=>setTokenWorkspaceOnly(e.target.checked)}/> Limit to this workspace</label>
+            </div>
             {newToken && (
               <div className="border-line-strong bg-secondary mt-4 rounded-lg border p-3">
                 <p className="text-sm font-medium">Copy this token now</p>
@@ -239,7 +258,7 @@ export default function SettingsPage() {
                       <p className="truncate font-medium">{token.label}</p>
                       <p className="caption-style text-subtle mt-1 font-mono">
                         {token.tokenPrefix}… ·{" "}
-                        {token.revokedAt ? "Revoked" : "Active"}
+                        {token.revokedAt ? "Revoked" : "Active"} · {token.permission ?? "legacy full"} · {token.expiresAt ? new Date(token.expiresAt).toLocaleDateString() : "No expiry"}
                       </p>
                     </div>
                     {!token.revokedAt && (

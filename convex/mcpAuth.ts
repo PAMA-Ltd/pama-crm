@@ -11,7 +11,7 @@ export async function requireMcpToken(
     .withIndex("by_hash", (q) => q.eq("tokenHash", tokenHash))
     .unique();
 
-  if (!token || token.revokedAt) {
+  if (!token || token.revokedAt || (token.expiresAt && token.expiresAt <= Date.now())) {
     throw new Error("Invalid or revoked MCP token.");
   }
 

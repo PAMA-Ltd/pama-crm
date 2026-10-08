@@ -11,6 +11,9 @@ export const listMine = query({
       tokenPrefix: v.string(),
       createdAt: v.number(),
       revokedAt: v.optional(v.number()),
+      expiresAt: v.optional(v.number()),
+      permission: v.optional(v.union(v.literal("read"),v.literal("write"),v.literal("admin"))),
+      organizationId: v.optional(v.id("organizations")),
     }),
   ),
   handler: async (ctx) => {
@@ -27,6 +30,9 @@ export const listMine = query({
       tokenPrefix: token.tokenPrefix,
       createdAt: token.createdAt,
       revokedAt: token.revokedAt,
+      expiresAt: token.expiresAt,
+      permission: token.permission,
+      organizationId: token.organizationId,
     }));
   },
 });
@@ -36,6 +42,9 @@ export const register = mutation({
     label: v.string(),
     tokenHash: v.string(),
     tokenPrefix: v.string(),
+    expiresAt: v.optional(v.number()),
+    permission: v.optional(v.union(v.literal("read"),v.literal("write"),v.literal("admin"))),
+    organizationId: v.optional(v.id("organizations")),
   },
   returns: v.id("mcpTokens"),
   handler: async (ctx, args) => {
@@ -51,11 +60,20 @@ export const register = mutation({
       .unique();
     if (existing) throw new Error("Token already exists.");
 
+    if(args.expiresAt && (args.expiresAt<=Date.now() || args.expiresAt>Date.now()+366*86400000)) throw new Error("Expiration must be in the next year.");
+    if(args.organizationId){
+      const org=await ctx.db.get(args.organizationId);
+      const membership=await ctx.db.query("organizationMembers").withIndex("by_organization_and_user",q=>q.eq("organizationId",args.organizationId!).eq("userSubject",identity.subject)).unique();
+      if(!org || org.status!=="active" || !membership) throw new Error("Workspace access denied.");
+    }
     return await ctx.db.insert("mcpTokens", {
       userSubject: identity.subject,
       label: args.label.trim(),
       tokenHash: args.tokenHash,
       tokenPrefix: args.tokenPrefix,
+      expiresAt: args.expiresAt,
+      permission: args.permission ?? "write",
+      organizationId: args.organizationId,
       createdAt: Date.now(),
     });
   },

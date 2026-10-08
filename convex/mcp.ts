@@ -171,7 +171,7 @@ export const authenticate = query({
     const organizations = [];
     for (const membership of memberships) {
       const organization = await ctx.db.get(membership.organizationId);
-      if (!organization) continue;
+      if (!organization || (token.organizationId && token.organizationId !== organization._id)) continue;
       organizations.push({
         id: organization._id,
         name: organization.name,
@@ -208,25 +208,25 @@ export const organizationSummary = query({
           .withIndex("by_organization", (q) =>
             q.eq("organizationId", organization._id),
           )
-          .take(500),
+          .collect(),
         ctx.db
           .query("contacts")
           .withIndex("by_organization", (q) =>
             q.eq("organizationId", organization._id),
           )
-          .take(500),
+          .collect(),
         ctx.db
           .query("deals")
           .withIndex("by_organization", (q) =>
             q.eq("organizationId", organization._id),
           )
-          .take(500),
+          .collect(),
         ctx.db
           .query("activities")
           .withIndex("by_organization", (q) =>
             q.eq("organizationId", organization._id),
           )
-          .take(500),
+          .collect(),
         ctx.db
           .query("organizationMembers")
           .withIndex("by_organization", (q) =>
@@ -1697,7 +1697,7 @@ export const forecast = query({
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", organization._id),
       )
-      .take(500);
+      .collect();
     const open = deals.filter(
       (deal) => deal.stage !== "Won" && deal.stage !== "Lost",
     );
@@ -1739,7 +1739,7 @@ export const slippingDeals = query({
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", organization._id),
       )
-      .take(500);
+      .collect();
     return deals
       .filter(
         (deal) =>
@@ -1786,19 +1786,19 @@ export const attentionSummary = query({
         .withIndex("by_organization", (q) =>
           q.eq("organizationId", organization._id),
         )
-        .take(500),
+        .collect(),
       ctx.db
         .query("deals")
         .withIndex("by_organization", (q) =>
           q.eq("organizationId", organization._id),
         )
-        .take(500),
+        .collect(),
       ctx.db
         .query("companies")
         .withIndex("by_organization", (q) =>
           q.eq("organizationId", organization._id),
         )
-        .take(500),
+        .collect(),
     ]);
 
     const now = Date.now();

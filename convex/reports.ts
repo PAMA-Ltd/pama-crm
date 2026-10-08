@@ -30,7 +30,7 @@ export const forecast = query({
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", args.organizationId),
       )
-      .take(500);
+      .collect();
 
     const isOpen = (stage: string) =>
       (OPEN_STAGES as readonly string[]).includes(stage);
@@ -104,7 +104,7 @@ export const slippingDeals = query({
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", args.organizationId),
       )
-      .take(500);
+      .collect();
 
     return rows
       .filter(
@@ -225,7 +225,7 @@ export const companyInsights = query({
             .eq("organizationId", args.organizationId)
             .eq("companyId", args.companyId),
         )
-        .take(500),
+        .collect(),
       ctx.db
         .query("deals")
         .withIndex("by_organization_and_company", (q) =>
@@ -233,7 +233,7 @@ export const companyInsights = query({
             .eq("organizationId", args.organizationId)
             .eq("companyId", args.companyId),
         )
-        .take(500),
+        .collect(),
       ctx.db
         .query("contacts")
         .withIndex("by_organization_and_company", (q) =>
@@ -241,7 +241,7 @@ export const companyInsights = query({
             .eq("organizationId", args.organizationId)
             .eq("companyId", args.companyId),
         )
-        .take(500),
+        .collect(),
     ]);
 
     const today = new Date();

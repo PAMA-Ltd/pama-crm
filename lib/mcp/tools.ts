@@ -63,6 +63,37 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+{"name":"import_contacts","description":"Bulk import up to 100 contacts with duplicate email reporting. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"firstName":{"type":"string"},"lastName":{"type":"string"},"email":{"type":"string"},"phone":{"type":"string"},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]},"notes":{"type":"string"}},"required":["firstName","lastName"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
+{"name":"import_deals","description":"Bulk import up to 100 deals with company metric refresh. Requires write permission.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"rows":{"type":"array","maxItems":100,"items":{"type":"object","properties":{"name":{"type":"string"},"companyId":{"type":"string"},"contactId":{"type":"string"},"pipelineId":{"type":"string"},"amount":{"type":"number","minimum":0},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]},"expectedCloseDate":{"type":"string"},"notes":{"type":"string"}},"required":["name","companyId","amount","stage"],"additionalProperties":false}}},"required":["organizationSlug","rows"],"additionalProperties":false}},
+{"name":"send_contact_email","description":"Send actual email to a CRM contact through Mailjet. Requires explicit confirmSend=true, outbound email enabled and a write token.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"},"subject":{"type":"string"},"body":{"type":"string"},"confirmSend":{"type":"boolean"}},"required":["organizationSlug","contactId","subject","body","confirmSend"],"additionalProperties":false}},
+{"name":"list_email_events","description":"View Mailjet-accepted email delivery events.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"list_sequence_enrollments","description":"List contact enrollments and progress for an email sequence.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"sequenceId":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":500}},"required":["organizationSlug","sequenceId"],"additionalProperties":false}},
+{"name":"page_companies","description":"Page through all companies, cursor-based; use isDone/continueCursor to get every page.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_contacts","description":"Page through contacts; optional company or status filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_deals","description":"Page through deals; optional stage/company/pipeline filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"pipelineId":{"type":"string"},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_activities","description":"Page through activities, optionally by company/contact/deal.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"contactId":{"type":"string"},"dealId":{"type":"string"}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"search_all_companies","description":"Full-text search across all company names, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"search_all_contacts","description":"Full-text search contact names across all contacts, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"search_all_deals","description":"Full-text search deal names across all deals, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"bulk_complete_activities","description":"Complete/reopen up to 100 activities atomically.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"activityIds":{"type":"array","items":{"type":"string"},"maxItems":100},"completed":{"type":"boolean"}},"required":["organizationSlug","activityIds","completed"],"additionalProperties":false}},
+{"name":"bulk_update_contact_status","description":"Set contact status on up to 100 contacts atomically.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"contactIds":{"type":"array","items":{"type":"string"},"maxItems":100},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]}},"required":["organizationSlug","contactIds","status"],"additionalProperties":false}},
+{"name":"list_mcp_audit","description":"List recent AI CRM modifications within a workspace (admin only).","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":250}},"required":["organizationSlug"],"additionalProperties":false}},
+  {"name":"create_organization","description":"Create a new workspace and default pipeline. The token holder becomes its owner.","inputSchema":{"type":"object","properties":{"name":{"type":"string"},"slug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["name"],"additionalProperties":false}},
+  {"name":"update_organization","description":"Update workspace identity; requires organization admin.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"newSlug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
+  {"name":"archive_organization","description":"Archive a workspace; requires owner and explicit slug confirmation.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"confirmSlug":{"type":"string"}},"required":["organizationSlug","confirmSlug"],"additionalProperties":false}},
+  {"name":"list_organization_invitations","description":"List workspace invitations; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"}},"required":["organizationSlug"],"additionalProperties":false}},
+  {"name":"invite_organization_member","description":"Create a workspace invitation. Does not send an email.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"email":{"type":"string"},"role":{"type":"string","enum":["owner","admin","member"]}},"required":["organizationSlug","email","role"],"additionalProperties":false}},
+  {"name":"change_member_role","description":"Change an existing member role; owner only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"memberId":{"type":"string"},"role":{"type":"string","enum":["owner","admin","member"]}},"required":["organizationSlug","memberId","role"],"additionalProperties":false}},
+  {"name":"create_team","description":"Create workspace team; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
+  {"name":"assign_member_team","description":"Assign member to team or unlink with null; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"memberId":{"type":"string"},"teamId":{"type":["string","null"]}},"required":["organizationSlug","memberId","teamId"],"additionalProperties":false}},
+  {"name":"delete_team","description":"Delete empty team; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"teamId":{"type":"string"}},"required":["organizationSlug","teamId"],"additionalProperties":false}},
+  {"name":"update_pipeline","description":"Update pipeline name/description; admins only.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"pipelineId":{"type":"string"},"name":{"type":"string"},"description":{"type":"string"}},"required":["organizationSlug","pipelineId","name"],"additionalProperties":false}},
+  {"name":"get_company","description":"Get company details and up to 100 related records for each relation.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"companyId":{"type":"string"}},"required":["organizationSlug","companyId"],"additionalProperties":false}},
+  {"name":"get_contact","description":"Retrieve full contact by ID.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"}},"required":["organizationSlug","contactId"],"additionalProperties":false}},
+  {"name":"get_deal","description":"Retrieve full deal by ID.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"dealId":{"type":"string"}},"required":["organizationSlug","dealId"],"additionalProperties":false}},
+  {"name":"get_company_insights","description":"Get company engagement, deal health and counts.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"companyId":{"type":"string"},"days":{"type":"number","minimum":7,"maximum":90}},"required":["organizationSlug","companyId"],"additionalProperties":false}},
+  {"name":"list_notifications","description":"List CRM activity notifications.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+  {"name":"set_sequence_enrollment_status","description":"Pause, resume or unsubscribe an enrollment.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"enrollmentId":{"type":"string"},"status":{"type":"string","enum":["active","paused","completed","unsubscribed"]}},"required":["organizationSlug","enrollmentId","status"],"additionalProperties":false}},
   {
     name: "list_organizations",
     description:
@@ -650,9 +681,40 @@ export const MCP_TOOLS: ToolDefinition[] = [
 
 const operationMap: Record<
   string,
-  { kind: "query" | "mutation"; fn: string }
+  { kind: "query" | "mutation" | "action"; fn: string }
 > = {
+  page_companies: { kind: "query", fn: "mcpPagination:pageCompanies" },
+  page_contacts: { kind: "query", fn: "mcpPagination:pageContacts" },
+  page_deals: { kind: "query", fn: "mcpPagination:pageDeals" },
+  page_activities: { kind: "query", fn: "mcpPagination:pageActivities" },
+  search_all_companies: { kind: "query", fn: "mcpPagination:searchAllCompanies" },
+  search_all_contacts: { kind: "query", fn: "mcpPagination:searchAllContacts" },
+  search_all_deals: { kind: "query", fn: "mcpPagination:searchAllDeals" },
+  bulk_complete_activities: { kind: "mutation", fn: "mcpPagination:bulkCompleteActivities" },
+  bulk_update_contact_status: { kind: "mutation", fn: "mcpPagination:bulkUpdateContactStatus" },
+  import_contacts: { kind:"mutation", fn:"mcpBulk:importContacts" },
+  import_deals: { kind:"mutation", fn:"mcpBulk:importDeals" },
+  send_contact_email: { kind:"action", fn:"mcpMail:sendContactEmail" },
+  list_email_events: { kind:"query", fn:"mcpMail:listEmailEvents" },
+  list_sequence_enrollments: { kind:"query", fn:"mcpMail:listEnrollments" },
+  list_mcp_audit: { kind: "query", fn: "mcpSecurity:listAudit" },
   get_organization_summary: { kind: "query", fn: "mcp:organizationSummary" },
+  create_organization: { kind: "mutation", fn: "mcpExpanded:createOrganization" },
+  update_organization: { kind: "mutation", fn: "mcpExpanded:updateOrganization" },
+  archive_organization: { kind: "mutation", fn: "mcpExpanded:archiveOrganization" },
+  list_organization_invitations: { kind: "query", fn: "mcpExpanded:listInvitations" },
+  invite_organization_member: { kind: "mutation", fn: "mcpExpanded:inviteMember" },
+  change_member_role: { kind: "mutation", fn: "mcpExpanded:changeMemberRole" },
+  create_team: { kind: "mutation", fn: "mcpExpanded:createTeam" },
+  assign_member_team: { kind: "mutation", fn: "mcpExpanded:assignTeam" },
+  delete_team: { kind: "mutation", fn: "mcpExpanded:deleteTeam" },
+  update_pipeline: { kind: "mutation", fn: "mcpExpanded:updatePipeline" },
+  get_company: { kind: "query", fn: "mcpExpanded:getCompany" },
+  get_contact: { kind: "query", fn: "mcpExpanded:getContact" },
+  get_deal: { kind: "query", fn: "mcpExpanded:getDeal" },
+  get_company_insights: { kind: "query", fn: "mcpExpanded:getCompanyInsights" },
+  list_notifications: { kind: "query", fn: "mcpExpanded:notifications" },
+  set_sequence_enrollment_status: { kind: "mutation", fn: "mcpExpanded:updateSequenceEnrollment" },
   search_companies: { kind: "query", fn: "mcp:searchCompanies" },
   create_company: { kind: "mutation", fn: "mcp:createCompany" },
   update_company: { kind: "mutation", fn: "mcp:updateCompany" },
@@ -717,16 +779,19 @@ export async function callMcpTool(
   input: JsonObject,
   tokenHash: string,
 ) {
+  const client=convexClient();
+  const operation=operationMap[name];
+  if(name!=="list_organizations"&&!operation)throw new Error("Unknown MCP tool: "+name);
+  const adminTools=new Set(["create_organization","update_organization","archive_organization","list_organization_invitations","invite_organization_member","change_member_role","create_team","assign_member_team","delete_team","update_pipeline","create_pipeline","delete_pipeline","create_email_sequence","update_email_sequence","delete_email_sequence","list_mcp_audit"]);
+  const permission=adminTools.has(name)?"admin":(operation?.kind==="mutation" || operation?.kind==="action")?"write":"read";
+  await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
   if (name === "list_organizations") {
     const auth = await authenticateMcpToken(tokenHash);
     return auth.organizations;
   }
 
-  const operation = operationMap[name];
-  if (!operation) throw new Error(`Unknown MCP tool: ${name}`);
-
+  if (!operation) throw new Error("Unknown MCP tool: "+name);
   const args: JsonObject = { ...input, tokenHash };
-  const client = convexClient();
 
   if (operation.kind === "query") {
     const reference = makeFunctionReference<
@@ -737,10 +802,23 @@ export async function callMcpTool(
     return await client.query(reference, args);
   }
 
+  if(operation.kind==="action"){
+    const reference=makeFunctionReference<"action",JsonObject,unknown>(operation.fn);
+    const result=await client.action(reference,args);
+    try{await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:audit"),{tokenHash,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});}
+    catch(error){console.error("MCP action audit failed",error);}
+    return result;
+  }
   const reference = makeFunctionReference<
     "mutation",
     JsonObject,
     unknown
   >(operation.fn);
-  return await client.mutation(reference, args);
+  const result=await client.mutation(reference,args);
+  try{
+    const data=result as Record<string,unknown> | null;
+    const targetId=data&&(data.id??data.companyId??data.contactId??data.dealId??data.activityId??data.teamId??data.memberId??data.sequenceId);
+    await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:audit"),{tokenHash,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined,targetId:typeof targetId==="string"?targetId:undefined});
+  }catch(error){console.error("MCP audit failed",error);}
+  return result;
 }
