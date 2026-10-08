@@ -35,7 +35,7 @@ export const upsertSession = mutation({
       throw new Error("Invalid OAuth bridge identity.");
     }
     const permissions = new Set(args.scopes);
-    const permission = permissions.has("crm:admin")
+    const permission: "read" | "write" | "admin" | null = permissions.has("crm:admin")
       ? "admin"
       : permissions.has("crm:write")
         ? "write"
