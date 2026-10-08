@@ -63,6 +63,15 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+{"name":"page_companies","description":"Page through all companies, cursor-based; use isDone/continueCursor to get every page.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_contacts","description":"Page through contacts; optional company or status filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_deals","description":"Page through deals; optional stage/company/pipeline filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"pipelineId":{"type":"string"},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"page_activities","description":"Page through activities, optionally by company/contact/deal.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"contactId":{"type":"string"},"dealId":{"type":"string"}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"search_all_companies","description":"Full-text search across all company names, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"search_all_contacts","description":"Full-text search contact names across all contacts, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"search_all_deals","description":"Full-text search deal names across all deals, paginated.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"search":{"type":"string"}},"required":["organizationSlug","search"],"additionalProperties":false}},
+{"name":"bulk_complete_activities","description":"Complete/reopen up to 100 activities atomically.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"activityIds":{"type":"array","items":{"type":"string"},"maxItems":100},"completed":{"type":"boolean"}},"required":["organizationSlug","activityIds","completed"],"additionalProperties":false}},
+{"name":"bulk_update_contact_status","description":"Set contact status on up to 100 contacts atomically.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"contactIds":{"type":"array","items":{"type":"string"},"maxItems":100},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]}},"required":["organizationSlug","contactIds","status"],"additionalProperties":false}},
 {"name":"list_mcp_audit","description":"List recent AI CRM modifications within a workspace (admin only).","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":250}},"required":["organizationSlug"],"additionalProperties":false}},
   {"name":"create_organization","description":"Create a new workspace and default pipeline. The token holder becomes its owner.","inputSchema":{"type":"object","properties":{"name":{"type":"string"},"slug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["name"],"additionalProperties":false}},
   {"name":"update_organization","description":"Update workspace identity; requires organization admin.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"name":{"type":"string"},"newSlug":{"type":"string"},"billingEmail":{"type":"string"}},"required":["organizationSlug","name"],"additionalProperties":false}},
@@ -669,6 +678,15 @@ const operationMap: Record<
   string,
   { kind: "query" | "mutation"; fn: string }
 > = {
+  page_companies: { kind: "query", fn: "mcpPagination:pageCompanies" },
+  page_contacts: { kind: "query", fn: "mcpPagination:pageContacts" },
+  page_deals: { kind: "query", fn: "mcpPagination:pageDeals" },
+  page_activities: { kind: "query", fn: "mcpPagination:pageActivities" },
+  search_all_companies: { kind: "query", fn: "mcpPagination:searchAllCompanies" },
+  search_all_contacts: { kind: "query", fn: "mcpPagination:searchAllContacts" },
+  search_all_deals: { kind: "query", fn: "mcpPagination:searchAllDeals" },
+  bulk_complete_activities: { kind: "mutation", fn: "mcpPagination:bulkCompleteActivities" },
+  bulk_update_contact_status: { kind: "mutation", fn: "mcpPagination:bulkUpdateContactStatus" },
   list_mcp_audit: { kind: "query", fn: "mcpSecurity:listAudit" },
   get_organization_summary: { kind: "query", fn: "mcp:organizationSummary" },
   create_organization: { kind: "mutation", fn: "mcpExpanded:createOrganization" },

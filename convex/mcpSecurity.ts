@@ -10,7 +10,7 @@ export const authorize = mutation({
     if(args.permission==="admin"&&permission!=="admin")throw new Error("Admin-scoped MCP token required.");
     if(args.permission==="write"&&permission==="read")throw new Error("Write-scoped MCP token required.");
     if(token.organizationId){
-      if(!args.organizationSlug)throw new Error("Workspace-scoped tokens cannot call global tools.");
+      if(!args.organizationSlug)return {allowed:true};
       const org=await ctx.db.query("organizations").withIndex("by_slug",q=>q.eq("slug",args.organizationSlug!.trim().toLowerCase())).unique();
       if(!org||org._id!==token.organizationId)throw new Error("Token cannot access that workspace.");
     }

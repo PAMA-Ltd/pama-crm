@@ -83,7 +83,8 @@ export default defineSchema({
       "organizationId",
       "normalizedName",
     ])
-    .index("by_organization_and_owner", ["organizationId", "ownerSubject"]),
+    .index("by_organization_and_owner", ["organizationId", "ownerSubject"])
+    .searchIndex("search_company",{searchField:"name",filterFields:["organizationId"]}),
 
   contacts: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -110,7 +111,8 @@ export default defineSchema({
     .index("by_organization_and_email", [
       "organizationId",
       "normalizedEmail",
-    ]),
+    ])
+    .searchIndex("search_contact",{searchField:"normalizedName",filterFields:["organizationId"]}),
 
   deals: defineTable({
     organizationId: v.optional(v.id("organizations")),
@@ -133,7 +135,8 @@ export default defineSchema({
     .index("by_organization_and_company", ["organizationId", "companyId"])
     .index("by_organization_and_contact", ["organizationId", "contactId"])
     .index("by_organization_and_stage", ["organizationId", "stage"])
-    .index("by_organization_and_pipeline", ["organizationId", "pipelineId"]),
+    .index("by_organization_and_pipeline", ["organizationId", "pipelineId"])
+    .searchIndex("search_deal",{searchField:"name",filterFields:["organizationId"]}),
 
   activities: defineTable({
     organizationId: v.optional(v.id("organizations")),
