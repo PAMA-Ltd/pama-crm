@@ -129,7 +129,7 @@ async function handle(request: Request) {
       tokenHash = oauth.tokenHash;
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("The OAuth client has no CRM scope")) {
-        return Response.json({ error: error.message }, { status: 403 });
+        return Response.json({ error: error.message }, { status: 403, headers: { "WWW-Authenticate": 'Bearer error="insufficient_scope", scope="crm:read"' } });
       }
       // Fail closed without exposing backend secrets, identity, or sensitive details.
       console.error("Pama CRM MCP OAuth verification or bridge failed:", error instanceof Error ? error.name : "unknown");
@@ -243,7 +243,10 @@ export async function POST(request: Request) {
   return await handle(request);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!readBearer(request)) {
+    return unauthorized(request, "OAuth sign-in or a Pama CRM MCP bearer token is required.");
+  }
   return new Response(
     JSON.stringify({
       name: "Pama CRM MCP",
