@@ -199,12 +199,25 @@ export const listMembers = query({
   ),
   handler: async (ctx, args) => {
     await requireOrganizationMember(ctx, args.organizationId);
-    return await ctx.db
+    const members = await ctx.db
       .query("organizationMembers")
       .withIndex("by_organization", (q) =>
         q.eq("organizationId", args.organizationId),
       )
       .take(250);
+
+    // Return exactly the declared result shape; raw Convex documents also contain
+    // _creationTime and organizationId, which strict return validation rejects.
+    return members.map((member) => ({
+      _id: member._id,
+      userSubject: member.userSubject,
+      email: member.email,
+      name: member.name,
+      avatarUrl: member.avatarUrl,
+      role: member.role,
+      teamId: member.teamId,
+      joinedAt: member.joinedAt,
+    }));
   },
 });
 
