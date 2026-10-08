@@ -1,13 +1,13 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { requireMcpToken } from "./mcpAuth";
 import { dealStageValidator, contactStatusValidator } from "./crmModels";
 const pageArgs={tokenHash:v.string(),organizationSlug:v.string(),cursor:v.optional(v.string()),limit:v.optional(v.number())};
-async function organization(ctx:any, tokenHash:string, organizationSlug:string){
+async function organization(ctx:QueryCtx|MutationCtx, tokenHash:string, organizationSlug:string){
   const token=await requireMcpToken(ctx,tokenHash);
-  const org=await ctx.db.query("organizations").withIndex("by_slug",(q:any)=>q.eq("slug",organizationSlug.trim().toLowerCase())).unique();
+  const org=await ctx.db.query("organizations").withIndex("by_slug",q=>q.eq("slug",organizationSlug.trim().toLowerCase())).unique();
   if(!org||org.status!=="active")throw new Error("Active workspace not found.");
-  const member=await ctx.db.query("organizationMembers").withIndex("by_organization_and_user",(q:any)=>q.eq("organizationId",org._id).eq("userSubject",token.userSubject)).unique();
+  const member=await ctx.db.query("organizationMembers").withIndex("by_organization_and_user",q=>q.eq("organizationId",org._id).eq("userSubject",token.userSubject)).unique();
   if(!member)throw new Error("Workspace access denied.");
   return {org,token};
 }
@@ -19,13 +19,16 @@ export const pageCompanies=query({args:pageArgs,handler:async(ctx,args)=>{
 export const pageContacts=query({args:{...pageArgs,status:v.optional(contactStatusValidator),companyId:v.optional(v.id("companies"))},handler:async(ctx,args)=>{
   const {org}=await organization(ctx,args.tokenHash,args.organizationSlug);
   if(args.companyId)return await ctx.db.query("contacts").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
-  if(args.status)return await ctx.db.query("contacts").withIndex("by_organization_and_status",q=>q.eq("organizationId",org._id).eq("status",args.status)).order("desc").paginate(opts(args));
+  const status=args.status;
+  if(status)return await ctx.db.query("contacts").withIndex("by_organization_and_status",q=>q.eq("organizationId",org._id).eq("status",args.status)).order("desc").paginate(opts(args));
   return await ctx.db.query("contacts").withIndex("by_organization",q=>q.eq("organizationId",org._id)).order("desc").paginate(opts(args));
 }});
 export const pageDeals=query({args:{...pageArgs,stage:v.optional(dealStageValidator),companyId:v.optional(v.id("companies")),pipelineId:v.optional(v.id("pipelines"))},handler:async(ctx,args)=>{
   const {org}=await organization(ctx,args.tokenHash,args.organizationSlug);
-  if(args.stage)return await ctx.db.query("deals").withIndex("by_organization_and_stage",q=>q.eq("organizationId",org._id).eq("stage",args.stage)).order("desc").paginate(opts(args));
-  if(args.companyId)return await ctx.db.query("deals").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
+  const stage=args.stage;
+  const companyId=args.companyId;
+  if(stage)return await ctx.db.query("deals").withIndex("by_organization_and_stage",q=>q.eq("organizationId",org._id).eq("stage",args.stage)).order("desc").paginate(opts(args));
+  if(companyId)return await ctx.db.query("deals").withIndex("by_organization_and_company",q=>q.eq("organizationId",org._id).eq("companyId",args.companyId)).order("desc").paginate(opts(args));
   if(args.pipelineId)return await ctx.db.query("deals").withIndex("by_organization_and_pipeline",q=>q.eq("organizationId",org._id).eq("pipelineId",args.pipelineId)).order("desc").paginate(opts(args));
   return await ctx.db.query("deals").withIndex("by_organization",q=>q.eq("organizationId",org._id)).order("desc").paginate(opts(args));
 }});
