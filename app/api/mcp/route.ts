@@ -1,6 +1,7 @@
 import { authenticateOAuthBearer } from "@/lib/mcp/oauth";
 import {
   MCP_TOOLS,
+  permissionForTool,
   authenticateMcpToken,
   callMcpTool,
 } from "@/lib/mcp/tools";
@@ -224,10 +225,18 @@ async function handle(request: Request) {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Tool call failed.";
+      const permission = permissionForTool(name);
+      const insufficientScope = /-scoped MCP token required|OAuth access token must include a CRM scope/.test(message);
+      const metadataUrl = new URL(
+        "/.well-known/oauth-protected-resource/api/mcp",
+        request.url,
+      ).toString();
+      const challenge = `Bearer resource_metadata="${metadataUrl}", error="insufficient_scope", error_description="Additional CRM access is required", scope="crm:${permission}"`;
       return jsonRpc(
         body.id,
         {
           content: [{ type: "text", text: message }],
+          ...(insufficientScope ? { _meta: { "mcp/www_authenticate": [challenge] } } : {}),
           isError: true,
         },
         200,
