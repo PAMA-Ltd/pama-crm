@@ -1,14 +1,14 @@
-import { mutation } from "./_generated/server";
+import { mutation, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { requireMcpToken } from "./mcpAuth";
 import { contactStatusValidator, dealStageValidator } from "./crmModels";
 import type { Id } from "./_generated/dataModel";
-async function orgFor(ctx:any,tokenHash:string,organizationSlug:string){
+async function orgFor(ctx:MutationCtx,tokenHash:string,organizationSlug:string){
   const token=await requireMcpToken(ctx,tokenHash);
   if(token.permission==="read")throw new Error("Write permission required.");
-  const org=await ctx.db.query("organizations").withIndex("by_slug",(q:any)=>q.eq("slug",organizationSlug.trim().toLowerCase())).unique();
+  const org=await ctx.db.query("organizations").withIndex("by_slug",q=>q.eq("slug",organizationSlug.trim().toLowerCase())).unique();
   if(!org || org.status!=="active" || (token.organizationId&&token.organizationId!==org._id))throw new Error("Workspace not found.");
-  const member=await ctx.db.query("organizationMembers").withIndex("by_organization_and_user",(q:any)=>q.eq("organizationId",org._id).eq("userSubject",token.userSubject)).unique();
+  const member=await ctx.db.query("organizationMembers").withIndex("by_organization_and_user",q=>q.eq("organizationId",org._id).eq("userSubject",token.userSubject)).unique();
   if(!member)throw new Error("Workspace access denied.");
   return {org,token};
 }
