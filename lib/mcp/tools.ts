@@ -63,6 +63,9 @@ const companyTags = {
 };
 
 export const MCP_TOOLS: ToolDefinition[] = [
+{"name":"send_contact_email","description":"Send actual email to a CRM contact through Mailjet. Requires explicit confirmSend=true, outbound email enabled and a write token.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"contactId":{"type":"string"},"subject":{"type":"string"},"body":{"type":"string"},"confirmSend":{"type":"boolean"}},"required":["organizationSlug","contactId","subject","body","confirmSend"],"additionalProperties":false}},
+{"name":"list_email_events","description":"View Mailjet-accepted email delivery events.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
+{"name":"list_sequence_enrollments","description":"List contact enrollments and progress for an email sequence.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"sequenceId":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":500}},"required":["organizationSlug","sequenceId"],"additionalProperties":false}},
 {"name":"page_companies","description":"Page through all companies, cursor-based; use isDone/continueCursor to get every page.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100}},"required":["organizationSlug"],"additionalProperties":false}},
 {"name":"page_contacts","description":"Page through contacts; optional company or status filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"status":{"type":"string","enum":["Lead","Active","Customer","Inactive"]}},"required":["organizationSlug"],"additionalProperties":false}},
 {"name":"page_deals","description":"Page through deals; optional stage/company/pipeline filter.","inputSchema":{"type":"object","properties":{"organizationSlug":{"type":"string"},"cursor":{"type":"string"},"limit":{"type":"number","minimum":1,"maximum":100},"companyId":{"type":"string"},"pipelineId":{"type":"string"},"stage":{"type":"string","enum":["Lead","Qualified","Proposal","Negotiation","Won","Lost"]}},"required":["organizationSlug"],"additionalProperties":false}},
@@ -676,7 +679,7 @@ export const MCP_TOOLS: ToolDefinition[] = [
 
 const operationMap: Record<
   string,
-  { kind: "query" | "mutation"; fn: string }
+  { kind: "query" | "mutation" | "action"; fn: string }
 > = {
   page_companies: { kind: "query", fn: "mcpPagination:pageCompanies" },
   page_contacts: { kind: "query", fn: "mcpPagination:pageContacts" },
@@ -687,6 +690,9 @@ const operationMap: Record<
   search_all_deals: { kind: "query", fn: "mcpPagination:searchAllDeals" },
   bulk_complete_activities: { kind: "mutation", fn: "mcpPagination:bulkCompleteActivities" },
   bulk_update_contact_status: { kind: "mutation", fn: "mcpPagination:bulkUpdateContactStatus" },
+  send_contact_email: { kind:"action", fn:"mcpMail:sendContactEmail" },
+  list_email_events: { kind:"query", fn:"mcpMail:listEmailEvents" },
+  list_sequence_enrollments: { kind:"query", fn:"mcpMail:listEnrollments" },
   list_mcp_audit: { kind: "query", fn: "mcpSecurity:listAudit" },
   get_organization_summary: { kind: "query", fn: "mcp:organizationSummary" },
   create_organization: { kind: "mutation", fn: "mcpExpanded:createOrganization" },
@@ -773,7 +779,7 @@ export async function callMcpTool(
   const operation=operationMap[name];
   if(name!=="list_organizations"&&!operation)throw new Error("Unknown MCP tool: "+name);
   const adminTools=new Set(["create_organization","update_organization","archive_organization","list_organization_invitations","invite_organization_member","change_member_role","create_team","assign_member_team","delete_team","update_pipeline","create_pipeline","delete_pipeline","create_email_sequence","update_email_sequence","delete_email_sequence","list_mcp_audit"]);
-  const permission=adminTools.has(name)?"admin":operation?.kind==="mutation"?"write":"read";
+  const permission=adminTools.has(name)?"admin":(operation?.kind==="mutation" || operation?.kind==="action")?"write":"read";
   await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:authorize"),{tokenHash,permission,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});
   if (name === "list_organizations") {
     const auth = await authenticateMcpToken(tokenHash);
@@ -792,6 +798,13 @@ export async function callMcpTool(
     return await client.query(reference, args);
   }
 
+  if(operation.kind==="action"){
+    const reference=makeFunctionReference<"action",JsonObject,unknown>(operation.fn);
+    const result=await client.action(reference,args);
+    try{await client.mutation(makeFunctionReference<"mutation",JsonObject,unknown>("mcpSecurity:audit"),{tokenHash,toolName:name,organizationSlug:typeof input.organizationSlug==="string"?input.organizationSlug:undefined});}
+    catch(error){console.error("MCP action audit failed",error);}
+    return result;
+  }
   const reference = makeFunctionReference<
     "mutation",
     JsonObject,

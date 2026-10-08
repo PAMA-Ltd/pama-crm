@@ -165,6 +165,15 @@ export default defineSchema({
       "completedAt",
     ]),
 
+  emailEvents: defineTable({
+    organizationId: v.id("organizations"),
+    contactId: v.id("contacts"),
+    actorSubject: v.string(),
+    subject: v.string(),
+    providerMessageId: v.string(),
+    kind: v.union(v.literal("manual"),v.literal("sequence")),
+    createdAt: v.number(),
+  }).index("by_organization",["organizationId"]),
   emailSequences: defineTable({
     organizationId: v.id("organizations"),
     name: v.string(),
@@ -181,6 +190,8 @@ export default defineSchema({
     contactId: v.id("contacts"),
     status: enrollmentStatusValidator,
     currentStep: v.number(),
+    sendLockedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
     nextStepAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -188,7 +199,8 @@ export default defineSchema({
     .index("by_organization", ["organizationId"])
     .index("by_sequence", ["sequenceId"])
     .index("by_contact", ["contactId"])
-    .index("by_sequence_and_contact", ["sequenceId", "contactId"]),
+    .index("by_sequence_and_contact", ["sequenceId", "contactId"])
+    .index("by_status_and_next", ["status", "nextStepAt"]),
 
   mcpAudit: defineTable({
     organizationId: v.optional(v.id("organizations")),
