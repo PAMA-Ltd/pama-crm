@@ -258,7 +258,7 @@ export default function SettingsPage() {
                       <p className="truncate font-medium">{token.label}</p>
                       <p className="caption-style text-subtle mt-1 font-mono">
                         {token.tokenPrefix}… ·{" "}
-                        {token.revokedAt ? "Revoked" : token.expiresAt && token.expiresAt < Date.now() ? "Expired" : "Active"} · {token.permission ?? "legacy full"} · {token.expiresAt ? new Date(token.expiresAt).toLocaleDateString() : "No expiry"}
+                        {token.revokedAt ? "Revoked" : "Active"} · {token.permission ?? "legacy full"} · {token.expiresAt ? new Date(token.expiresAt).toLocaleDateString() : "No expiry"}
                       </p>
                     </div>
                     {!token.revokedAt && (

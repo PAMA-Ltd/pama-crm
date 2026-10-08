@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
 import { requireMcpToken } from "./mcpAuth";
 import { organizationRoleValidator, enrollmentStatusValidator } from "./workspaceModels";
 

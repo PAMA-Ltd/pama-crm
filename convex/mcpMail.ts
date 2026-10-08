@@ -124,7 +124,7 @@ export const processDue=internalAction({
   args:{},
   handler:async ctx=>{
     if(process.env.CRM_AUTOMATION_ENABLED!=="true"||process.env.CRM_OUTBOUND_EMAIL_ENABLED!=="true")return;
-    const ids=await ctx.runQuery(makeFunctionReference<"query",{},Id<"sequenceEnrollments">[]>("mcpMail:due"),{});
+    const ids=await ctx.runQuery(makeFunctionReference<"query",Record<string, never>,Id<"sequenceEnrollments">[]>("mcpMail:due"),{});
     for(const enrollmentId of ids){
       const claim=await ctx.runMutation(makeFunctionReference<"mutation",{enrollmentId:Id<"sequenceEnrollments">},null|{enrollmentId:Id<"sequenceEnrollments">,stepIndex:number,lockedAt:number,to:string,subject:string,body:string}>("mcpMail:claim"),{enrollmentId});
       if(!claim)continue;
