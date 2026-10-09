@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import {
@@ -26,29 +26,26 @@ export default function WorkspaceLayoutSettings({
 }) {
   const config = useQuery(getWorkspaceSettings, { organizationId });
   const saveSettings = useMutation(updateWorkspaceSettings);
-  const [preset, setPreset] = useState<WorkspacePreset>("sales");
-  const [modules, setModules] = useState<WorkspaceModule[]>(["sales"]);
+  const [draft, setDraft] = useState<{ preset: WorkspacePreset; modules: WorkspaceModule[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const canEdit = role !== "member";
-
-  useEffect(() => {
-    if (!config) return;
-    setPreset(config.preset);
-    setModules([...config.enabledModules]);
-  }, [config]);
+  const preset = draft?.preset ?? config?.preset ?? "sales";
+  const modules = draft?.modules ?? config?.enabledModules ?? modulesForPreset("sales");
 
   function choosePreset(value: WorkspacePreset) {
-    setPreset(value);
-    setModules(modulesForPreset(value));
+    setDraft({ preset: value, modules: modulesForPreset(value) });
     setNotice(null);
   }
 
   function toggleModule(module: WorkspaceModule) {
-    setModules((current) => current.includes(module)
-      ? current.filter((id) => id !== module)
-      : [...current, module]);
+    setDraft({
+      preset,
+      modules: modules.includes(module)
+        ? modules.filter((id) => id !== module)
+        : [...modules, module],
+    });
     setNotice(null);
   }
 
@@ -70,6 +67,7 @@ export default function WorkspaceLayoutSettings({
         enabledModules: modules,
         expectedVersion: config.configVersion,
       });
+      setDraft(null);
       setNotice("Workspace layout saved for everyone in this organization.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to save workspace settings.");
