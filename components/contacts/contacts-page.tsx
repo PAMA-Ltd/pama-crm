@@ -111,7 +111,7 @@ export default function ContactsPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, status: salesVisible ? "Lead" : "Active" });
     setError(null);
     setOpen(true);
   }
@@ -350,7 +350,8 @@ export default function ContactsPage() {
                   onChange={(event) => updateForm("title", event.target.value)}
                 />
               </Field>
-              <Field label="Status" htmlFor="contact-status">
+              <Field label="Relationship status" htmlFor="contact-status"
+                hint={!salesVisible ? "Shared CRM relationship status; not seller verification, subscription, or lifecycle status." : undefined}>
                 <Select
                   value={form.status}
                   onValueChange={(value) =>

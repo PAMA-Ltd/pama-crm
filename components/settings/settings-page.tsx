@@ -6,6 +6,7 @@ import Button from "@/components/_ui/button";
 import Field from "@/components/_ui/field";
 import { Input } from "@/components/_ui/input";
 import PageHeader from "@/components/crm/page-header";
+import { WORKSPACE_PRESET_IDS, WORKSPACE_PRESETS, type WorkspacePreset } from "@/lib/workspaces/presets";
 import WorkspaceLayoutSettings from "./workspace-layout-settings";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import {
@@ -52,6 +53,7 @@ export default function SettingsPage() {
   const [creatingToken, setCreatingToken] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceSlug, setWorkspaceSlug] = useState("");
+  const [workspacePreset, setWorkspacePreset] = useState<WorkspacePreset>("sales");
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
 
   const endpoint = useMemo(() => {
@@ -92,9 +94,11 @@ export default function SettingsPage() {
       await createWorkspace({
         name: workspaceName,
         slug: workspaceSlug.trim() || undefined,
+        preset: workspacePreset,
       });
       setWorkspaceName("");
       setWorkspaceSlug("");
+      setWorkspacePreset("sales");
     } catch (error) {
       setWorkspaceError(
         error instanceof Error ? error.message : "Unable to create workspace.",
@@ -142,7 +146,7 @@ export default function SettingsPage() {
             </p>
             <form
               onSubmit={createAnotherWorkspace}
-              className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+              className="mt-4 grid gap-3 sm:grid-cols-2"
             >
               <Field label="Name" htmlFor="new-workspace-name">
                 <Input
@@ -160,6 +164,16 @@ export default function SettingsPage() {
                   onChange={(event) => setWorkspaceSlug(event.target.value)}
                   placeholder="vasta"
                 />
+              </Field>
+              <Field label="Starting workspace preset" htmlFor="new-workspace-preset"
+                hint="A reversible starting layout; modules can be customized later.">
+                <select id="new-workspace-preset" value={workspacePreset}
+                  onChange={(event) => setWorkspacePreset(event.target.value as WorkspacePreset)}
+                  className="border-line-strong bg-background text-foreground w-full rounded-lg border px-3 py-2">
+                  {WORKSPACE_PRESET_IDS.map((id) => (
+                    <option key={id} value={id}>{WORKSPACE_PRESETS[id].label}</option>
+                  ))}
+                </select>
               </Field>
               <div className="flex items-end">
                 <Button
