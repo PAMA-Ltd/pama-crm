@@ -25,6 +25,7 @@ import PageHeader from "@/components/crm/page-header";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
 import { WORKSPACE_PRESETS } from "@/lib/workspaces/presets";
+import { activityAssociationIds } from "@/lib/workspaces/activity-links";
 import { useActivities } from "@/hooks/use-activities";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
@@ -172,9 +173,8 @@ export default function ActivitiesPage() {
       type: form.type,
       subject: form.subject,
       description: form.description || undefined,
-      companyId: form.companyId === "none" ? undefined : form.companyId,
-      contactId: form.contactId === "none" ? undefined : form.contactId,
-      dealId: form.dealId === "none" ? undefined : form.dealId,
+      // Preserve pre-existing Sales associations on edits even when their controls are hidden.
+      ...activityAssociationIds(form),
       dueAt: form.dueDate
         ? new Date(`${form.dueDate}T17:00:00`).getTime()
         : undefined,
