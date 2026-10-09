@@ -82,3 +82,14 @@ export function defaultWorkspaceSettings() {
 export function workspaceLanding(enabledModules: readonly WorkspaceModule[]): string {
   return enabledModules.includes("sales") ? "/companies" : "/contacts";
 }
+
+/** Sales-only screens have no meaning in non-Sales presentation layouts. */
+export function isSalesOnlyRoute(pathname: string): boolean {
+  return (
+    ["/companies", "/deals", "/pipelines", "/forecast", "/sequences"].some(
+      (route) => pathname === route || pathname.startsWith(route + "/"),
+    ) ||
+    pathname === "/reports" ||
+    pathname.startsWith("/reports/")
+  );
+}

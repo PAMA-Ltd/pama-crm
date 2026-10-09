@@ -59,6 +59,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   return (
     <WorkspaceContext.Provider
+      key={active._id}
       value={{ organization: active, organizations, setOrganizationId }}
     >
       {children}

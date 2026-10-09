@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  defaultWorkspaceSettings, modulesForPreset, workspaceLanding,
+  defaultWorkspaceSettings, modulesForPreset, workspaceLanding, isSalesOnlyRoute,
   WORKSPACE_MODULE_IDS, WORKSPACE_PRESET_IDS, WORKSPACE_PRESETS,
 } from "../lib/workspaces/presets.ts";
 
@@ -31,4 +31,13 @@ test("workspace entry uses existing real screens, with no simulated dashboard", 
   assert.equal(workspaceLanding(modulesForPreset("sales")), "/companies");
   assert.equal(workspaceLanding(modulesForPreset("commerce")), "/contacts");
   assert.equal(workspaceLanding(["lifecycle", "sales"]), "/companies");
+});
+
+test("Sales-only routes require an enabled Sales presentation module", () => {
+  for (const path of ["/companies", "/deals", "/deals/abc", "/forecast", "/pipelines", "/sequences", "/reports/quarter", "/reports/slipping"]) {
+    assert.equal(isSalesOnlyRoute(path), true, path);
+  }
+  for (const path of ["/", "/workspace", "/contacts", "/activities", "/team", "/settings", "/help", "/company", "/reports-legacy"]) {
+    assert.equal(isSalesOnlyRoute(path), false, path);
+  }
 });

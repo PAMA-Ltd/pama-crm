@@ -62,7 +62,8 @@ export default function ContactsPage() {
   const { organization } = useWorkspace();
   const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
   const peopleLabel = layout ? WORKSPACE_PRESETS[layout.preset].contactLabel : "Contacts";
-  const personLabel = peopleLabel.endsWith("s") ? peopleLabel.slice(0, -1) : "Person";
+  const personLabel = peopleLabel === "People" ? "Person" : peopleLabel.slice(0, -1);
+  const salesVisible = layout?.enabledModules.includes("sales") ?? false;
   const { contacts, isLoading } = useContacts();
   const { companies } = useCompanies();
   const { deals } = useDeals();
@@ -195,7 +196,7 @@ export default function ContactsPage() {
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader
         title={peopleLabel}
-        description="People attached to your accounts and opportunities"
+        description={salesVisible ? "People attached to your accounts and opportunities" : "People and relationships in this workspace"}
         actions={newContactButton}
       />
 
@@ -218,7 +219,9 @@ export default function ContactsPage() {
       ) : contacts.length === 0 ? (
         <EmptyState
           title={`No ${peopleLabel.toLowerCase()} yet`}
-          description="Add the people you are speaking with. Contacts can be linked to companies and deals."
+          description={salesVisible
+            ? "Add the people you are speaking with. Contacts can be linked to companies and deals."
+            : "Add people to your workspace. You can optionally enable Sales later without losing records."}
           action={newContactButton}
         />
       ) : (
@@ -227,10 +230,10 @@ export default function ContactsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Company</TableHead>
+                {salesVisible && <TableHead>Company</TableHead>}
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Deals</TableHead>
+                {salesVisible && <TableHead>Deals</TableHead>}
                 <TableHead>Activities</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -262,11 +265,11 @@ export default function ContactsPage() {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-soft">
+                    {salesVisible && <TableCell className="text-soft">
                       {contact.companyId
                         ? companyById.get(contact.companyId) ?? "Unknown company"
                         : "—"}
-                    </TableCell>
+                    </TableCell>}
                     <TableCell className="text-soft">
                       {contact.title ?? "—"}
                     </TableCell>
@@ -275,7 +278,7 @@ export default function ContactsPage() {
                         {contact.status}
                       </span>
                     </TableCell>
-                    <TableCell>{dealCount}</TableCell>
+                    {salesVisible && <TableCell>{dealCount}</TableCell>}
                     <TableCell>{activityCount}</TableCell>
                     <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                       <div className="flex justify-end gap-1">
@@ -302,7 +305,9 @@ export default function ContactsPage() {
             <DialogDescription>
               {editingId
                 ? "Update this person and their relationship to the organization."
-                : "Add a person to your CRM and optionally link them to a company."}
+                : salesVisible
+                  ? "Add a person to your CRM and optionally link them to a company."
+                  : "Add a person to this workspace."}
             </DialogDescription>
           </DialogHeader>
 
@@ -360,7 +365,7 @@ export default function ContactsPage() {
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Company" htmlFor="contact-company" className="sm:col-span-2">
+              {salesVisible && <Field label="Company" htmlFor="contact-company" className="sm:col-span-2">
                 <Select
                   value={form.companyId}
                   onValueChange={(value) => updateForm("companyId", value)}
@@ -375,7 +380,7 @@ export default function ContactsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </Field>
+              </Field>}
               <Field label="Notes" htmlFor="contact-notes" className="sm:col-span-2">
                 <textarea
                   id="contact-notes"
@@ -397,7 +402,7 @@ export default function ContactsPage() {
                 Cancel
               </Button>
               <Button variant="primary" size="sm" type="submit" disabled={saving}>
-                {saving ? "Saving…" : editingId ? "Save contact" : "Create contact"}
+                {saving ? "Saving…" : editingId ? `Save ${personLabel.toLowerCase()}` : `Create ${personLabel.toLowerCase()}`}
               </Button>
             </DialogFooter>
           </form>

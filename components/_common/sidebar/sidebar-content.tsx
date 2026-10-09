@@ -53,11 +53,6 @@ export default function SidebarContent() {
     (deal) => deal.stage !== "Won" && deal.stage !== "Lost",
   ).length;
 
-  // Do not flash the previous workspace's navigation while changing tenants.
-  if (!layout) {
-    return <div className="p-4 text-sm text-subtle">Loading workspace layout…</div>;
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-sidebar-border bg-sidebar-accent flex shrink-0 items-center gap-2 border-b p-3">
@@ -69,6 +64,9 @@ export default function SidebarContent() {
       </div>
 
       <ScrollArea className="min-h-0 flex-1">
+        {!layout ? (
+          <p role="status" className="p-4 text-sm text-subtle">Loading workspace layout…</p>
+        ) : (
         <nav aria-label="Primary">
           <SidebarSection className="border-sidebar-border border-b">
             {salesVisible && (
@@ -155,6 +153,7 @@ export default function SidebarContent() {
             />
           </SidebarSection>}
         </nav>
+        )}
       </ScrollArea>
 
       <SidebarSection className="border-sidebar-border shrink-0 border-t border-b">
