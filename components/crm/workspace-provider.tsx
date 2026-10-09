@@ -45,9 +45,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     );
   }, [organizations, preferredId]);
 
+  const activeId = active?._id;
   useLayoutEffect(() => {
-    if (active) useCompaniesStore.getState().switchWorkspace(active._id);
-  }, [active?._id]);
+    if (activeId) useCompaniesStore.getState().switchWorkspace(activeId);
+  }, [activeId]);
 
   function setOrganizationId(organizationId: string) {
     useCompaniesStore.getState().switchWorkspace(organizationId);
