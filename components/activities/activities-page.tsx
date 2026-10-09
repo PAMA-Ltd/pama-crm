@@ -25,7 +25,7 @@ import PageHeader from "@/components/crm/page-header";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
 import { WORKSPACE_PRESETS } from "@/lib/workspaces/presets";
-import { activityAssociationIds } from "@/lib/workspaces/activity-links";
+import { activityAssociationIds, contactsForActivity } from "@/lib/workspaces/activity-links";
 import { useActivities } from "@/hooks/use-activities";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
@@ -119,13 +119,7 @@ export default function ActivitiesPage() {
     });
   }, [activities, showCompleted]);
 
-  const matchingContacts =
-    form.companyId === "none"
-      ? contacts
-      : contacts.filter(
-          (contact) =>
-            !contact.companyId || contact.companyId === form.companyId,
-        );
+  const matchingContacts = contactsForActivity(contacts, form.companyId, salesVisible);
   const matchingDeals =
     form.companyId === "none"
       ? deals

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
+import { startLayoutDraft, isStaleLayoutDraft, layoutDraftForSave, type WorkspaceLayoutDraft } from "@/lib/workspaces/layout-draft";
 import {
   getWorkspaceSettings,
   updateWorkspaceSettings,
@@ -26,31 +27,45 @@ export default function WorkspaceLayoutSettings({
 }) {
   const config = useQuery(getWorkspaceSettings, { organizationId });
   const saveSettings = useMutation(updateWorkspaceSettings);
-  const [draft, setDraft] = useState<{ preset: WorkspacePreset; modules: WorkspaceModule[] } | null>(null);
+  const [draft, setDraft] = useState<WorkspaceLayoutDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const canEdit = role !== "member";
   const preset = draft?.preset ?? config?.preset ?? "sales";
   const modules = draft?.modules ?? config?.enabledModules ?? modulesForPreset("sales");
+  const stale = Boolean(config && isStaleLayoutDraft(draft, config.configVersion));
 
   function choosePreset(value: WorkspacePreset) {
-    setDraft({ preset: value, modules: modulesForPreset(value) });
+    if (!config) return;
+    setDraft(current => ({
+      ...startLayoutDraft(current, config),
+      preset: value,
+      modules: modulesForPreset(value),
+    }));
     setNotice(null);
   }
 
   function toggleModule(module: WorkspaceModule) {
-    setDraft({
-      preset,
-      modules: modules.includes(module)
-        ? modules.filter((id) => id !== module)
-        : [...modules, module],
+    if (!config) return;
+    setDraft(current => {
+      const base = startLayoutDraft(current, config);
+      return {
+        ...base,
+        modules: base.modules.includes(module)
+          ? base.modules.filter(id => id !== module)
+          : [...base.modules, module],
+      };
     });
     setNotice(null);
   }
 
   async function save() {
-    if (!config || !canEdit || saving) return;
+    if (!config || !canEdit || saving || !draft) return;
+    if (isStaleLayoutDraft(draft, config.configVersion)) {
+      setError("Another administrator updated this workspace. Review the latest version before saving.");
+      return;
+    }
     if (preset !== config.preset) {
       const okay = window.confirm(
         "Apply a different workspace layout? This changes navigation and labels only. All records, permissions and integrations will be preserved.",
@@ -61,12 +76,7 @@ export default function WorkspaceLayoutSettings({
     setNotice(null);
     setSaving(true);
     try {
-      await saveSettings({
-        organizationId,
-        preset,
-        enabledModules: modules,
-        expectedVersion: config.configVersion,
-      });
+      await saveSettings({ organizationId, ...layoutDraftForSave(draft) });
       setDraft(null);
       setNotice("Workspace layout saved for everyone in this organization.");
     } catch (reason) {
@@ -150,11 +160,24 @@ export default function WorkspaceLayoutSettings({
             not an authorization boundary or email-sending switch.
           </p>
         </div>
+        {stale && (
+          <div role="alert" className="border-line-strong rounded-lg border p-3">
+            <p className="text-sm font-medium">Workspace settings changed while you were editing.</p>
+            <p className="caption-style text-subtle mt-1">
+              Your unsaved draft is preserved but cannot overwrite another administrator’s changes.
+              Review their latest configuration before making a new edit.
+            </p>
+            <Button variant="secondary" size="sm" className="mt-2"
+              onClick={() => { setDraft(null); setError(null); setNotice(null); }}>
+              Discard draft and load latest
+            </Button>
+          </div>
+        )}
         {error && <p role="alert" className="caption-style text-danger">{error}</p>}
         {notice && <p role="status" className="caption-style text-soft">{notice}</p>}
         {canEdit ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" size="sm" disabled={saving} onClick={() => void save()}>
+            <Button variant="primary" size="sm" disabled={saving || stale || !draft} onClick={() => void save()}>
               {saving ? "Saving…" : "Save workspace layout"}
             </Button>
             <Button

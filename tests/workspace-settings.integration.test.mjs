@@ -30,12 +30,13 @@ registerHooks({
   },
 });
 
-const [settings, organizations, stores, companies, links] = await Promise.all([
+const [settings, organizations, stores, companies, links, drafts] = await Promise.all([
   import("../convex/workspaceSettings.ts"),
   import("../convex/organizations.ts"),
   import("../stores/companies-store.ts"),
   import("../lib/companies.ts"),
   import("../lib/workspaces/activity-links.ts"),
+  import("../lib/workspaces/layout-draft.ts"),
 ]);
 
 function fixture() {
@@ -192,4 +193,60 @@ test("editing hidden Sales associations leaves saved ids intact", () => {
   assert.deepEqual(links.activityAssociationIds({
     companyId: "none", contactId: "person", dealId: "none",
   }), { companyId: undefined, contactId: "person", dealId: undefined });
+});
+
+test("Commerce activity edit can choose any organization-local contact despite legacy hidden company", async () => {
+  const f = fixture();
+  f.as("owner");
+  const a = { _id: "contact-a", companyId: "company-old", firstName: "Alice" };
+  const b = { _id: "contact-b", companyId: "company-other", firstName: "Bob" };
+  const outsiders = { _id: "not-from-org", companyId: "company-old", firstName: "External" };
+  // useContacts is already scoped to the active organization; an outsider must
+  // never be supplied to this presentation selector in the first place.
+  const sameOrgContacts = [a, b];
+  assert.deepEqual(
+    links.contactsForActivity(sameOrgContacts, "company-old", false).map(c => c._id),
+    ["contact-a", "contact-b"],
+  );
+  assert.deepEqual(
+    links.contactsForActivity(sameOrgContacts, "company-old", true).map(c => c._id),
+    ["contact-a"],
+  );
+  const form = { companyId: "company-old", dealId: "deal-old", contactId: b._id };
+  const saved = links.activityAssociationIds(form);
+  assert.equal(saved.contactId, "contact-b");
+  assert.equal(saved.companyId, "company-old");
+  assert.equal(saved.dealId, "deal-old");
+  assert.equal(sameOrgContacts.includes(outsiders), false);
+});
+
+test("two admins editing the same workspace cannot overwrite a newer version", async () => {
+  const f = fixture();
+  const liveA = await settings.get._handler(f.ctx, { organizationId: f.orgA });
+  const adminA = {
+    ...drafts.startLayoutDraft(null, liveA),
+    preset: "commerce", modules: ["lifecycle"],
+  };
+  // Admin A's draft was based on version 0. Admin B independently saves version 1.
+  f.as("admin");
+  const changed = await settings.update._handler(f.ctx, {
+    organizationId: f.orgA, preset: "services",
+    enabledModules: ["sales"], expectedVersion: liveA.configVersion,
+  });
+  assert.equal(changed.configVersion, 1);
+  assert.equal(drafts.isStaleLayoutDraft(adminA, changed.configVersion), true);
+
+  // Admin A's next edits must preserve the original baseline, never read 1.
+  const editedA = { ...drafts.startLayoutDraft(adminA, changed), modules: ["lifecycle", "sales"] };
+  const outgoing = drafts.layoutDraftForSave(editedA);
+  assert.equal(outgoing.expectedVersion, 0);
+  await assert.rejects(
+    settings.update._handler(f.ctx, { organizationId: f.orgA, ...outgoing }),
+    /changed since you opened/,
+  );
+  const after = await settings.get._handler(f.ctx, { organizationId: f.orgA });
+  assert.equal(after.preset, "services");
+  assert.equal(after.configVersion, 1);
+  // Explicitly discarding draft picks up the newest version.
+  assert.equal(drafts.startLayoutDraft(null, after).baseVersion, 1);
 });
