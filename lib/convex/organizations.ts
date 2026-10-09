@@ -1,4 +1,5 @@
 import { makeFunctionReference } from "convex/server";
+import type { WorkspacePreset } from "@/lib/workspaces/presets";
 
 export type OrganizationRole = "owner" | "admin" | "member";
 
@@ -32,7 +33,7 @@ export const listOrganizations = makeFunctionReference<
 
 export const createOrganization = makeFunctionReference<
   "mutation",
-  { name: string; slug?: string; billingEmail?: string },
+  { name: string; slug?: string; billingEmail?: string; preset?: WorkspacePreset },
   string
 >("organizations:create");
 

@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import Field from "@/components/_ui/field";
 import { Input } from "@/components/_ui/input";
+import { WORKSPACE_PRESET_IDS, WORKSPACE_PRESETS, type WorkspacePreset } from "@/lib/workspaces/presets";
 import {
   acceptOrganizationInvite,
   createOrganization,
@@ -17,6 +18,7 @@ export default function WorkspaceOnboarding() {
   const invites = useQuery(listPendingOrganizationInvites, {}) ?? [];
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [preset, setPreset] = useState<WorkspacePreset>("sales");
   const [saving, setSaving] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export default function WorkspaceOnboarding() {
     setSaving(true);
     setError(null);
     try {
-      await create({ name, slug: slug.trim() || undefined });
+      await create({ name, slug: slug.trim() || undefined, preset });
     } catch (submitError) {
       setError(
         submitError instanceof Error
@@ -118,6 +120,22 @@ export default function WorkspaceOnboarding() {
               onChange={(event) => setSlug(event.target.value)}
               placeholder="pamastore"
             />
+          </Field>
+          <Field
+            label="How will you use PamaCRM?"
+            htmlFor="workspace-preset"
+            hint="Choose a starting workspace. You can customize modules later."
+          >
+            <select
+              id="workspace-preset"
+              className="border-line-strong bg-background text-foreground w-full rounded-lg border px-3 py-2"
+              value={preset}
+              onChange={(event) => setPreset(event.target.value as WorkspacePreset)}
+            >
+              {WORKSPACE_PRESET_IDS.map((id) => (
+                <option key={id} value={id}>{WORKSPACE_PRESETS[id].label}</option>
+              ))}
+            </select>
           </Field>
           {error && (
             <p role="alert" className="caption-style text-danger">

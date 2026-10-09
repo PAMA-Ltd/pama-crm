@@ -13,6 +13,8 @@ import { useDeals } from "@/hooks/use-deals";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import { listTeams } from "@/lib/convex/teams";
 import { listPipelines } from "@/lib/convex/pipelines";
+import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
+import { WORKSPACE_PRESETS } from "@/lib/workspaces/presets";
 import Logo from "@/public/assets/images/_common/logo.svg";
 import BuildingIcon from "@/public/assets/images/companies/sidebar/building.svg";
 import ClipboardIcon from "@/public/assets/images/companies/sidebar/clipboard.svg";
@@ -38,6 +40,8 @@ const PIPELINE_ICONS = [DotYellow, DotPink, DotPurple] as const;
 export default function SidebarContent() {
   const pathname = usePathname();
   const { organization } = useWorkspace();
+  const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
+  const salesVisible = layout?.enabledModules.includes("sales") ?? false;
   const { companies } = useCompanies();
   const { contacts } = useContacts();
   const { deals } = useDeals();
@@ -48,6 +52,11 @@ export default function SidebarContent() {
   const openDeals = deals.filter(
     (deal) => deal.stage !== "Won" && deal.stage !== "Lost",
   ).length;
+
+  // Do not flash the previous workspace's navigation while changing tenants.
+  if (!layout) {
+    return <div className="p-4 text-sm text-subtle">Loading workspace layout…</div>;
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -62,45 +71,25 @@ export default function SidebarContent() {
       <ScrollArea className="min-h-0 flex-1">
         <nav aria-label="Primary">
           <SidebarSection className="border-sidebar-border border-b">
-            <SidebarNavItem
-              icon={BuildingIcon}
-              label="Companies"
-              href="/companies"
-              count={companies.length}
-              active={pathname === "/companies"}
-            />
-            <SidebarNavItem
-              icon={ClipboardIcon}
-              label="Deals Board"
-              href="/deals"
-              count={openDeals}
-              active={pathname === "/deals"}
-            />
-            <SidebarNavItem
-              icon={BarChartIcon}
-              label="Forecast"
-              href="/forecast"
-              active={pathname === "/forecast"}
-            />
-            <SidebarNavItem
-              icon={ListIcon}
-              label="Activities"
-              href="/activities"
-              active={pathname === "/activities"}
-            />
-            <SidebarNavItem
-              icon={BookClosedIcon}
-              label="Contacts"
-              href="/contacts"
-              count={contacts.length}
-              active={pathname === "/contacts"}
-            />
-            <SidebarNavItem
-              icon={MailIcon}
-              label="Email Sequences"
-              href="/sequences"
-              active={pathname === "/sequences"}
-            />
+            {salesVisible && (
+              <>
+                <SidebarNavItem icon={BuildingIcon} label="Companies" href="/companies"
+                  count={companies.length} active={pathname === "/companies"} />
+                <SidebarNavItem icon={ClipboardIcon} label="Deals Board" href="/deals"
+                  count={openDeals} active={pathname === "/deals"} />
+                <SidebarNavItem icon={BarChartIcon} label="Forecast" href="/forecast"
+                  active={pathname === "/forecast"} />
+              </>
+            )}
+            <SidebarNavItem icon={BookClosedIcon}
+              label={WORKSPACE_PRESETS[layout.preset].contactLabel} href="/contacts"
+              count={contacts.length} active={pathname === "/contacts"} />
+            <SidebarNavItem icon={ListIcon} label="Activities" href="/activities"
+              active={pathname === "/activities"} />
+            {salesVisible && (
+              <SidebarNavItem icon={MailIcon} label="Email Sequences"
+                href="/sequences" active={pathname === "/sequences"} />
+            )}
           </SidebarSection>
 
           <SidebarSection
@@ -128,7 +117,7 @@ export default function SidebarContent() {
             )}
           </SidebarSection>
 
-          <SidebarSection
+          {salesVisible && <SidebarSection
             title="Reporting"
             className="border-sidebar-border border-b"
           >
@@ -144,9 +133,9 @@ export default function SidebarContent() {
               href="/reports/slipping"
               active={pathname === "/reports/slipping"}
             />
-          </SidebarSection>
+          </SidebarSection>}
 
-          <SidebarSection title="Pipelines">
+          {salesVisible && <SidebarSection title="Pipelines">
             {pipelines.map((pipeline, index) => (
               <SidebarNavItem
                 key={pipeline._id}
@@ -164,7 +153,7 @@ export default function SidebarContent() {
               tone="quiet"
               active={pathname === "/pipelines"}
             />
-          </SidebarSection>
+          </SidebarSection>}
         </nav>
       </ScrollArea>
 

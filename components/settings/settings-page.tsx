@@ -6,6 +6,7 @@ import Button from "@/components/_ui/button";
 import Field from "@/components/_ui/field";
 import { Input } from "@/components/_ui/input";
 import PageHeader from "@/components/crm/page-header";
+import WorkspaceLayoutSettings from "./workspace-layout-settings";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import {
   claimLegacyData,
@@ -127,6 +128,12 @@ export default function SettingsPage() {
               </div>
             </dl>
           </section>
+
+          <WorkspaceLayoutSettings
+            key={organization._id}
+            organizationId={organization._id}
+            role={organization.role}
+          />
 
           <section className="border-line-strong bg-card rounded-xl border p-4">
             <h2>Create another workspace</h2>
