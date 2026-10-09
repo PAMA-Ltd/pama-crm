@@ -77,3 +77,8 @@ export function defaultWorkspaceSettings() {
     updatedBy: "",
   };
 }
+
+/** Available landing routes, never a made-up dashboard or unsupported domain page. */
+export function workspaceLanding(enabledModules: readonly WorkspaceModule[]): string {
+  return enabledModules.includes("sales") ? "/companies" : "/contacts";
+}

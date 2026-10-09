@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import {
   Dialog,
@@ -31,6 +31,8 @@ import {
 import EmptyState from "@/components/crm/empty-state";
 import PageHeader from "@/components/crm/page-header";
 import { useWorkspace } from "@/components/crm/workspace-provider";
+import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
+import { WORKSPACE_PRESETS } from "@/lib/workspaces/presets";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
 import { useDeals } from "@/hooks/use-deals";
@@ -58,6 +60,9 @@ const EMPTY_FORM = {
 
 export default function ContactsPage() {
   const { organization } = useWorkspace();
+  const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
+  const peopleLabel = layout ? WORKSPACE_PRESETS[layout.preset].contactLabel : "Contacts";
+  const personLabel = peopleLabel.endsWith("s") ? peopleLabel.slice(0, -1) : "Person";
   const { contacts, isLoading } = useContacts();
   const { companies } = useCompanies();
   const { deals } = useDeals();
@@ -182,14 +187,14 @@ export default function ContactsPage() {
 
   const newContactButton = (
     <Button variant="primary" size="sm" onClick={openCreate}>
-      New Contact
+      {`New ${personLabel}`}
     </Button>
   );
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PageHeader
-        title="Contacts"
+        title={peopleLabel}
         description="People attached to your accounts and opportunities"
         actions={newContactButton}
       />
@@ -198,21 +203,21 @@ export default function ContactsPage() {
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search contacts…"
+          placeholder={`Search ${peopleLabel.toLowerCase()}…`}
           className="max-w-sm"
         />
         <span className="caption-style text-subtle hidden sm:block">
-          {visible.length} {visible.length === 1 ? "contact" : "contacts"}
+          {visible.length} {visible.length === 1 ? personLabel.toLowerCase() : peopleLabel.toLowerCase()}
         </span>
       </div>
 
       {isLoading ? (
         <div className="caption-style text-subtle flex flex-1 items-center justify-center">
-          Loading contacts…
+          Loading {peopleLabel.toLowerCase()}…
         </div>
       ) : contacts.length === 0 ? (
         <EmptyState
-          title="No contacts yet"
+          title={`No ${peopleLabel.toLowerCase()} yet`}
           description="Add the people you are speaking with. Contacts can be linked to companies and deals."
           action={newContactButton}
         />
@@ -293,7 +298,7 @@ export default function ContactsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit contact" : "New contact"}</DialogTitle>
+            <DialogTitle>{editingId ? `Edit ${personLabel.toLowerCase()}` : `New ${personLabel.toLowerCase()}`}</DialogTitle>
             <DialogDescription>
               {editingId
                 ? "Update this person and their relationship to the organization."

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  defaultWorkspaceSettings, modulesForPreset,
+  defaultWorkspaceSettings, modulesForPreset, workspaceLanding,
   WORKSPACE_MODULE_IDS, WORKSPACE_PRESET_IDS, WORKSPACE_PRESETS,
 } from "../lib/workspaces/presets.ts";
 
@@ -25,4 +25,10 @@ test("presets return independent mutable module arrays and never classify organi
   assert.equal(WORKSPACE_PRESETS.commerce.contactLabel, "Customers");
   assert.equal(WORKSPACE_PRESETS.sales.contactLabel, "Contacts");
   assert.equal(WORKSPACE_PRESETS.commerce.defaultModules.includes("sales"), false);
+});
+
+test("workspace entry uses existing real screens, with no simulated dashboard", () => {
+  assert.equal(workspaceLanding(modulesForPreset("sales")), "/companies");
+  assert.equal(workspaceLanding(modulesForPreset("commerce")), "/contacts");
+  assert.equal(workspaceLanding(["lifecycle", "sales"]), "/companies");
 });
