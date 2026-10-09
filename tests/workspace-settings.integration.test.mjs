@@ -30,9 +30,10 @@ registerHooks({
   },
 });
 
-const [settings, organizations, stores, companies, links, drafts] = await Promise.all([
+const [settings, organizations, activities, stores, companies, links, drafts] = await Promise.all([
   import("../convex/workspaceSettings.ts"),
   import("../convex/organizations.ts"),
+  import("../convex/activities.ts"),
   import("../stores/companies-store.ts"),
   import("../lib/companies.ts"),
   import("../lib/workspaces/activity-links.ts"),
@@ -42,6 +43,7 @@ const [settings, organizations, stores, companies, links, drafts] = await Promis
 function fixture() {
   const tables = Object.fromEntries([
     "organizations", "organizationMembers", "organizationSettings", "pipelines",
+    "companies", "contacts", "deals", "activities",
   ].map(name => [name, new Map()]));
   let sequence = 0;
   let subject = "owner";
@@ -95,7 +97,7 @@ function fixture() {
       },
     },
   };
-  return { ctx, orgA, orgB, tables, as(user) { subject = user; } };
+  return { ctx, orgA, orgB, tables, insert, as(user) { subject = user; } };
 }
 
 test("member reads Sales fallback; nonmember and anonymous cannot read settings", async () => {
@@ -249,4 +251,37 @@ test("two admins editing the same workspace cannot overwrite a newer version", a
   assert.equal(after.configVersion, 1);
   // Explicitly discarding draft picks up the newest version.
   assert.equal(drafts.startLayoutDraft(null, after).baseVersion, 1);
+});
+
+test("legacy company-linked activity persists new Commerce contact and old Sales links through real update handler", async () => {
+  const f = fixture();
+  f.as("owner");
+  const oldCompany = f.insert("companies", { organizationId: f.orgA, name: "Old" });
+  const otherCompany = f.insert("companies", { organizationId: f.orgA, name: "Other" });
+  const previous = f.insert("contacts", { organizationId: f.orgA, companyId: oldCompany, firstName: "Alice" });
+  const next = f.insert("contacts", { organizationId: f.orgA, companyId: otherCompany, firstName: "Bob" });
+  const outsider = f.insert("contacts", { organizationId: f.orgB, firstName: "Outside" });
+  const dealId = f.insert("deals", { organizationId: f.orgA, companyId: oldCompany, name: "Old deal" });
+  const activityId = f.insert("activities", {
+    organizationId: f.orgA, type: "Task", subject: "Contact follow-up",
+    companyId: oldCompany, dealId, contactId: previous, updatedAt: Date.now(),
+  });
+  const contactRows = [previous, next].map(_id => f.tables.contacts.get(_id));
+  const choices = links.contactsForActivity(contactRows, oldCompany, false);
+  assert.deepEqual(choices.map(c => c._id), [previous, next]);
+  const form = { companyId: oldCompany, dealId, contactId: next };
+  await activities.update._handler(f.ctx, {
+    organizationId: f.orgA, activityId, type: "Task",
+    subject: "Contact follow-up", ...links.activityAssociationIds(form),
+  });
+  const saved = f.tables.activities.get(activityId);
+  assert.equal(saved.contactId, next);
+  assert.equal(saved.companyId, oldCompany);
+  assert.equal(saved.dealId, dealId);
+  // Cross-organization contact IDs are rejected by real link validation.
+  await assert.rejects(activities.update._handler(f.ctx, {
+    organizationId: f.orgA, activityId, type: "Task", subject: "Follow-up",
+    ...links.activityAssociationIds({ ...form, contactId: outsider }),
+  }), /Contact not found/);
+  assert.equal(f.tables.activities.get(activityId).contactId, next);
 });
