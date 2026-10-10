@@ -6,7 +6,8 @@ import {
   requireOrganizationMember,
   requireOrganizationOwner,
 } from "./authz";
-import { organizationRoleValidator } from "./workspaceModels";
+import { organizationRoleValidator, workspacePresetValidator } from "./workspaceModels";
+import { modulesForPreset } from "../lib/workspaces/presets";
 
 const organizationResult = v.object({
   _id: v.id("organizations"),
@@ -87,6 +88,7 @@ export const create = mutation({
     name: v.string(),
     slug: v.optional(v.string()),
     billingEmail: v.optional(v.string()),
+    preset: v.optional(workspacePresetValidator),
   },
   returns: v.id("organizations"),
   handler: async (ctx, args) => {
@@ -114,6 +116,15 @@ export const create = mutation({
         args.billingEmail?.trim().toLocaleLowerCase() ||
         identity.email?.trim().toLocaleLowerCase() ||
         undefined,
+    });
+
+    await ctx.db.insert("organizationSettings", {
+      organizationId,
+      preset: args.preset ?? "sales",
+      enabledModules: modulesForPreset(args.preset ?? "sales"),
+      configVersion: 1,
+      updatedAt: Date.now(),
+      updatedBy: identity.subject,
     });
 
     await ctx.db.insert("organizationMembers", {

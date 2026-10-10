@@ -35,3 +35,19 @@ export const sequenceStepValidator = v.object({
   subject: v.string(),
   body: v.string(),
 });
+
+export const workspacePresetValidator = v.union(
+  v.literal("sales"),
+  v.literal("commerce"),
+  v.literal("saas"),
+  v.literal("services"),
+  v.literal("education"),
+  v.literal("custom"),
+);
+
+export const workspaceModuleValidator = v.union(
+  v.literal("sales"),
+  v.literal("lifecycle"),
+  v.literal("campaigns"),
+  v.literal("automations"),
+);

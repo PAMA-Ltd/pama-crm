@@ -14,6 +14,8 @@ import {
   organizationStatusValidator,
   sequenceStatusValidator,
   sequenceStepValidator,
+  workspaceModuleValidator,
+  workspacePresetValidator,
 } from "./workspaceModels";
 
 export default defineSchema({
@@ -26,6 +28,15 @@ export default defineSchema({
     planName: v.string(),
     billingEmail: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
+
+  organizationSettings: defineTable({
+    organizationId: v.id("organizations"),
+    preset: workspacePresetValidator,
+    enabledModules: v.array(workspaceModuleValidator),
+    configVersion: v.number(),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+  }).index("by_organization", ["organizationId"]),
 
   organizationMembers: defineTable({
     organizationId: v.id("organizations"),

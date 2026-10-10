@@ -3,6 +3,8 @@ import type { SortKey } from "@/data/companies";
 import { DEFAULT_FILTERS } from "@/lib/companies";
 
 type CompaniesState = {
+  workspaceId: string | null;
+  switchWorkspace: (organizationId: string) => void;
   sortBy: SortKey;
   owner: string;
   stage: string;
@@ -33,6 +35,18 @@ type CompaniesState = {
 
 export const useCompaniesStore = create<CompaniesState>((set) => ({
   ...DEFAULT_FILTERS,
+  workspaceId: null,
+  switchWorkspace: (organizationId) => set((state) => state.workspaceId === organizationId ? state : ({
+    ...DEFAULT_FILTERS,
+    workspaceId: organizationId,
+    selectedIds: [],
+    detailId: null,
+    detailOpen: false,
+    profileName: null,
+    profileOpen: false,
+    newCompanyOpen: false,
+    searchOpen: false,
+  })),
   selectedIds: [],
   detailId: null,
   detailOpen: false,

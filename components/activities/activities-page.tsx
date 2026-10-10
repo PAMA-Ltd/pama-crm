@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import {
   Dialog,
@@ -23,6 +23,9 @@ import {
 import EmptyState from "@/components/crm/empty-state";
 import PageHeader from "@/components/crm/page-header";
 import { useWorkspace } from "@/components/crm/workspace-provider";
+import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
+import { WORKSPACE_PRESETS } from "@/lib/workspaces/presets";
+import { activityAssociationIds, contactsForActivity } from "@/lib/workspaces/activity-links";
 import { useActivities } from "@/hooks/use-activities";
 import { useCompanies } from "@/hooks/use-companies";
 import { useContacts } from "@/hooks/use-contacts";
@@ -62,6 +65,10 @@ function formatDue(timestamp?: number) {
 
 export default function ActivitiesPage() {
   const { organization } = useWorkspace();
+  const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
+  const salesVisible = layout?.enabledModules.includes("sales") ?? false;
+  const peopleLabel = layout ? WORKSPACE_PRESETS[layout.preset].contactLabel : "Contacts";
+  const personLabel = peopleLabel === "People" ? "Person" : peopleLabel.slice(0, -1);
   const { activities, isLoading } = useActivities();
   const { companies } = useCompanies();
   const { contacts } = useContacts();
@@ -112,13 +119,7 @@ export default function ActivitiesPage() {
     });
   }, [activities, showCompleted]);
 
-  const matchingContacts =
-    form.companyId === "none"
-      ? contacts
-      : contacts.filter(
-          (contact) =>
-            !contact.companyId || contact.companyId === form.companyId,
-        );
+  const matchingContacts = contactsForActivity(contacts, form.companyId, salesVisible);
   const matchingDeals =
     form.companyId === "none"
       ? deals
@@ -166,9 +167,8 @@ export default function ActivitiesPage() {
       type: form.type,
       subject: form.subject,
       description: form.description || undefined,
-      companyId: form.companyId === "none" ? undefined : form.companyId,
-      contactId: form.contactId === "none" ? undefined : form.contactId,
-      dealId: form.dealId === "none" ? undefined : form.dealId,
+      // Preserve pre-existing Sales associations on edits even when their controls are hidden.
+      ...activityAssociationIds(form),
       dueAt: form.dueDate
         ? new Date(`${form.dueDate}T17:00:00`).getTime()
         : undefined,
@@ -294,9 +294,9 @@ export default function ActivitiesPage() {
                     )}
                     <div className="caption-style text-subtle mt-2 flex flex-wrap gap-x-3 gap-y-1">
                       <span>{formatDue(activity.dueAt)}</span>
-                      {activity.companyId && <span>{companyById.get(activity.companyId) ?? "Company"}</span>}
-                      {activity.contactId && <span>{contactById.get(activity.contactId) ?? "Contact"}</span>}
-                      {activity.dealId && <span>{dealById.get(activity.dealId) ?? "Deal"}</span>}
+                      {salesVisible && activity.companyId && <span>{companyById.get(activity.companyId) ?? "Company"}</span>}
+                      {activity.contactId && <span>{contactById.get(activity.contactId) ?? personLabel}</span>}
+                      {salesVisible && activity.dealId && <span>{dealById.get(activity.dealId) ?? "Deal"}</span>}
                     </div>
                   </button>
 
@@ -371,7 +371,7 @@ export default function ActivitiesPage() {
                 />
               </Field>
 
-              <Field label="Company" htmlFor="activity-company">
+              {salesVisible && <Field label="Company" htmlFor="activity-company">
                 <Select
                   value={form.companyId}
                   onValueChange={(value) => updateForm("companyId", value)}
@@ -384,16 +384,16 @@ export default function ActivitiesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </Field>
+              </Field>}
 
-              <Field label="Contact" htmlFor="activity-contact">
+              <Field label={personLabel} htmlFor="activity-contact">
                 <Select
                   value={form.contactId}
                   onValueChange={(value) => updateForm("contactId", value)}
                 >
                   <SelectTrigger id="activity-contact"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">No contact</SelectItem>
+                    <SelectItem value="none">No {personLabel.toLowerCase()}</SelectItem>
                     {matchingContacts.map((contact) => (
                       <SelectItem key={contact._id} value={contact._id}>
                         {[contact.firstName, contact.lastName].filter(Boolean).join(" ")}
@@ -403,7 +403,7 @@ export default function ActivitiesPage() {
                 </Select>
               </Field>
 
-              <Field label="Deal" htmlFor="activity-deal" className="sm:col-span-2">
+              {salesVisible && <Field label="Deal" htmlFor="activity-deal" className="sm:col-span-2">
                 <Select
                   value={form.dealId}
                   onValueChange={(value) => updateForm("dealId", value)}
@@ -416,7 +416,7 @@ export default function ActivitiesPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </Field>
+              </Field>}
 
               <Field label="Details" htmlFor="activity-description" className="sm:col-span-2">
                 <textarea
@@ -427,6 +427,12 @@ export default function ActivitiesPage() {
                   className="border-line-strong bg-secondary text-foreground w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none"
                 />
               </Field>
+
+              {!salesVisible && editingId && (form.companyId !== "none" || form.dealId !== "none") && (
+                <p className="caption-style text-subtle sm:col-span-2">
+                  Existing Sales links are preserved when saving. Enable Sales to edit those links.
+                </p>
+              )}
 
               {error && (
                 <p role="alert" className="caption-style text-danger sm:col-span-2">
