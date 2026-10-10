@@ -3,6 +3,8 @@ import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { requireOrganizationAdmin, requireOrganizationMember } from "./authz";
 import { validIntegrationSource, normalizeLifecycleEvent } from "../lib/lifecycle/event-contract";
+import { consentFromEvent } from "../lib/lifecycle/engagement";
+import { applyTagAutomations } from "./lifecycleEngagement";
 
 const environmentValidator = v.union(v.literal("staging"), v.literal("production"));
 const EVENT_RATE_WINDOW_MS = 60_000;
@@ -178,6 +180,10 @@ export const ingest = mutation({
       .withIndex("by_organization_source_subject", q => q
         .eq("organizationId", key.organizationId).eq("source", key.source)
         .eq("subjectId", args.subjectId)).unique();
+    const consent = consentFromEvent(args.type, normalized.propertiesJson);
+    if (consent === "opt_in" && !(normalized.email || profile?.email)) {
+      throw new Error("Explicit marketing opt-in requires a known email.");
+    }
     const contact = normalized.email
       ? await ctx.db.query("contacts").withIndex("by_organization_and_email", q => q
         .eq("organizationId", key.organizationId).eq("normalizedEmail", normalized.email)).unique()
@@ -185,14 +191,17 @@ export const ingest = mutation({
     const profileId = profile ? profile._id : await ctx.db.insert("lifecycleProfiles", {
       organizationId: key.organizationId, source: key.source, subjectId: args.subjectId,
       email: normalized.email, name: normalized.name, contactId: contact?._id,
-      firstSeenAt: now, lastSeenAt: now,
+      firstSeenAt: now, lastSeenAt: now, lastEventType: args.type,
+      tags: [], marketingConsent: consent ?? undefined,
+      consentUpdatedAt: consent ? now : undefined,
     });
     if (profile) {
       await ctx.db.patch(profile._id, {
         email: normalized.email ?? profile.email,
         name: normalized.name ?? profile.name,
         contactId: normalized.email ? contact?._id : profile.contactId,
-        lastSeenAt: now,
+        lastSeenAt: now, lastEventType: args.type,
+        ...(consent ? { marketingConsent: consent, consentUpdatedAt: now } : {}),
       });
     }
     await ctx.db.insert("lifecycleEvents", {
@@ -200,6 +209,10 @@ export const ingest = mutation({
       source: key.source, environment: key.environment,
       eventId: args.eventId, type: args.type, propertiesJson: normalized.propertiesJson,
       occurredAt: args.occurredAt, receivedAt: now,
+    });
+    await applyTagAutomations(ctx, key.organizationId, {
+      profileId, source: key.source, type: args.type, eventId: args.eventId,
+      occurredAt: args.occurredAt,
     });
     await ctx.db.insert("lifecycleIngressAudit", {
       organizationId: key.organizationId, integrationId: key._id,
