@@ -301,6 +301,8 @@ export default defineSchema({
     eventId: v.string(),
     type: v.string(),
     propertiesJson: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
     occurredAt: v.number(),
     receivedAt: v.number(),
   })

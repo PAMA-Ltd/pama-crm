@@ -152,3 +152,57 @@ test("ingestion is atomic, idempotent, scoped, rate limited, and contact linked"
   await lifecycle.revokeIntegration._handler(f.ctx,{organizationId:f.orgA,integrationId:key._id});
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,eventId:"event-2"}),/Invalid integration credential/);
 });
+
+test("integration credentials reject over-90-day expiry and malformed hashes server-side", async () => {
+  const f = fixture();
+  f.as("admin");
+  const args = {organizationId:f.orgA,source:"pamastore",environment:"staging",
+    label:"Staging publisher",tokenHash:"b".repeat(64),
+    tokenPrefix:"pama_evt_" + "b".repeat(11),
+    expiresAt:Date.now() + 90 * 86400000};
+  const id = await lifecycle.registerIntegration._handler(f.ctx,args);
+  assert.equal(f.tables.lifecycleIntegrationKeys.get(id).expiresAt,args.expiresAt);
+  await assert.rejects(lifecycle.registerIntegration._handler(f.ctx,{
+    ...args,tokenHash:"c".repeat(64),tokenPrefix:"pama_evt_" + "c".repeat(11),
+    expiresAt:Date.now() + 180 * 86400000
+  }), /within 90 days/);
+  await assert.rejects(lifecycle.registerIntegration._handler(f.ctx,{
+    ...args,tokenHash:"d".repeat(64),tokenPrefix:"pama_evt_" + "d".repeat(11),
+    expiresAt:Date.now() - 1000
+  }), /within 90 days/);
+  await assert.rejects(lifecycle.registerIntegration._handler(f.ctx,{
+    ...args,tokenHash:"invalid",tokenPrefix:"pama_evt_" + "c".repeat(11),
+  }), /Invalid credential metadata/);
+  await lifecycle.revokeIntegration._handler(f.ctx,{organizationId:f.orgA,integrationId:id});
+  assert.ok(f.tables.lifecycleIntegrationKeys.get(id).revokedAt);
+});
+
+test("idempotency rejects changed email and name independently but allows exact replay after profile updates", async () => {
+  const f=fixture();
+  f.insert("lifecycleIntegrationKeys",{
+    organizationId:f.orgA,source:"pamastore",environment:"staging",
+    tokenHash:HASH,tokenPrefix:"pama_evt_"+"a".repeat(11),
+    expiresAt:NOW + 86400000
+  });
+  const first={...common,name:"First buyer"};
+  await lifecycle.ingest._handler(f.ctx,first);
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...first,
+    email:"different@example.test"}), /different content/);
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...first,
+    name:"Another buyer"}), /different content/);
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...first,
+    subjectId:"another-buyer"}), /different content/);
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...first,
+    occurredAt:NOW-1000}), /different content/);
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...first,
+    propertiesJson:'{"orderId":"different"}'}), /different content/);
+  // A distinct later event legitimately changes mutable profile metadata.
+  await lifecycle.ingest._handler(f.ctx,{
+    ...first,eventId:"event-2",email:"later@example.test",name:"Updated Buyer",
+  });
+  assert.deepEqual(await lifecycle.ingest._handler(f.ctx,first),{
+    accepted:true,duplicate:true,eventId:first.eventId
+  });
+  assert.equal(f.tables.lifecycleEvents.size,2);
+  assert.equal([...f.tables.lifecycleEvents.values()].find(e=>e.eventId==="event-1").name,"First buyer");
+});

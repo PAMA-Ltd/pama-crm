@@ -38,7 +38,7 @@ export default function LifecycleIntegrations({ organizationId, role }: { organi
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
       const tokenHash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
       await register({ organizationId, source, environment, label: label.trim(),
-        tokenHash, tokenPrefix: raw.slice(0, 20), expiresAt: Date.now() + 90 * 86400000 });
+        tokenHash, tokenPrefix: raw.slice(0, 20), expiresAt: Date.now() + 89 * 86400000 });
       setOneTimeToken(raw);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create integration.");
