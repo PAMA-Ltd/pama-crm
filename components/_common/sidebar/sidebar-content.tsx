@@ -42,6 +42,7 @@ export default function SidebarContent() {
   const { organization } = useWorkspace();
   const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
   const salesVisible = layout?.enabledModules.includes("sales") ?? false;
+  const lifecycleVisible = layout?.enabledModules.includes("lifecycle") ?? false;
   const { companies } = useCompanies();
   const { contacts } = useContacts();
   const { deals } = useDeals();
@@ -84,6 +85,8 @@ export default function SidebarContent() {
               count={contacts.length} active={pathname === "/contacts"} />
             <SidebarNavItem icon={ListIcon} label="Activities" href="/activities"
               active={pathname === "/activities"} />
+            {lifecycleVisible && <SidebarNavItem icon={ListIcon} label="Events" href="/events"
+              active={pathname === "/events"} />}
             {salesVisible && (
               <SidebarNavItem icon={MailIcon} label="Email Sequences"
                 href="/sequences" active={pathname === "/sequences"} />

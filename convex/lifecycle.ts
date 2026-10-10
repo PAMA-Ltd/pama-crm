@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { requireOrganizationAdmin, requireOrganizationMember } from "./authz";
 import { validIntegrationSource, normalizeLifecycleEvent } from "../lib/lifecycle/event-contract";
 
@@ -7,9 +8,9 @@ const environmentValidator = v.union(v.literal("staging"), v.literal("production
 const EVENT_RATE_WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 120;
 
-async function enabled(ctx: { db: any }, organizationId: any) {
+async function enabled(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
   const settings = await ctx.db.query("organizationSettings")
-    .withIndex("by_organization", (q: any) => q.eq("organizationId", organizationId)).unique();
+    .withIndex("by_organization", q => q.eq("organizationId", organizationId)).unique();
   return settings?.enabledModules.includes("lifecycle") ?? false;
 }
 

@@ -17,13 +17,17 @@ export default function WorkspaceRouteGuard({ children }: { children: ReactNode 
   const { organization } = useWorkspace();
   const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
   const isSalesPage = isSalesOnlyRoute(pathname);
-  const blocked = isSalesPage && layout !== undefined && !layout.enabledModules.includes("sales");
+  const guarded = isSalesPage || pathname === "/events";
+  const blocked = layout !== undefined && (
+    (isSalesPage && !layout.enabledModules.includes("sales")) ||
+    (pathname === "/events" && !layout.enabledModules.includes("lifecycle"))
+  );
 
   useEffect(() => {
     if (blocked) router.replace("/workspace");
   }, [blocked, router]);
 
-  if (isSalesPage && (layout === undefined || blocked)) {
+  if (guarded && (layout === undefined || blocked)) {
     return <main role="status" className="flex flex-1 items-center justify-center">
       {blocked ? "Opening your workspace…" : "Checking workspace layout…"}
     </main>;
