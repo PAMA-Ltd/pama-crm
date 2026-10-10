@@ -239,9 +239,57 @@ export default defineSchema({
     contactId: v.optional(v.id("contacts")),
     firstSeenAt: v.number(),
     lastSeenAt: v.number(),
+    lastEventType: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    marketingConsent: v.optional(v.union(v.literal("opt_in"), v.literal("opt_out"))),
+    consentUpdatedAt: v.optional(v.number()),
   })
     .index("by_organization_source_subject", ["organizationId", "source", "subjectId"])
     .index("by_organization_last_seen", ["organizationId", "lastSeenAt"]),
+
+  lifecycleSegments: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    source: v.optional(v.string()),
+    lastEventType: v.optional(v.string()),
+    requiredTag: v.optional(v.string()),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
+
+  lifecycleCampaigns: defineTable({
+    organizationId: v.id("organizations"),
+    segmentId: v.id("lifecycleSegments"),
+    name: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    status: v.union(v.literal("draft"), v.literal("archived")),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
+
+  lifecycleAutomations: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    source: v.optional(v.string()),
+    eventType: v.string(),
+    tag: v.string(),
+    status: v.union(v.literal("draft"), v.literal("active"), v.literal("paused")),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_organization", ["organizationId"]),
+
+  lifecycleAutomationRuns: defineTable({
+    organizationId: v.id("organizations"),
+    automationId: v.id("lifecycleAutomations"),
+    profileId: v.id("lifecycleProfiles"),
+    eventId: v.string(),
+    outcome: v.union(v.literal("tagged"), v.literal("already_tagged")),
+    createdAt: v.number(),
+  }).index("by_organization_created", ["organizationId", "createdAt"]),
 
   lifecycleEvents: defineTable({
     organizationId: v.id("organizations"),
