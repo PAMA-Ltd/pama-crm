@@ -149,6 +149,13 @@ export const ingest = mutation({
         .eq("environment", key.environment)
         .eq("eventId", args.eventId)).unique();
     if (existing) {
+      // A reused eventId with different content is a conflict, not a retry.
+      const existingProfile = await ctx.db.get(existing.profileId);
+      if (existing.type !== args.type || existing.occurredAt !== args.occurredAt ||
+          existing.propertiesJson !== args.propertiesJson ||
+          existingProfile?.subjectId !== args.subjectId) {
+        throw new Error("Event ID already used for different content.");
+      }
       await ctx.db.insert("lifecycleIngressAudit", {
         organizationId: key.organizationId, integrationId: key._id,
         eventId: args.eventId, outcome: "duplicate", createdAt: now,
@@ -172,7 +179,7 @@ export const ingest = mutation({
       await ctx.db.patch(profile._id, {
         email: normalized.email ?? profile.email,
         name: normalized.name ?? profile.name,
-        contactId: contact?._id ?? profile.contactId,
+        contactId: normalized.email ? contact?._id : profile.contactId,
         lastSeenAt: now,
       });
     }

@@ -19,6 +19,7 @@ export default function LifecycleIntegrations({ organizationId, role }: { organi
   const [label, setLabel] = useState("Pamastore event publisher");
   const [environment, setEnvironment] = useState<"staging" | "production">("staging");
   const [oneTimeToken, setOneTimeToken] = useState<string | null>(null);
+  const [renderedAt] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const enabled = settings?.enabledModules.includes("lifecycle") ?? false;
@@ -91,7 +92,7 @@ export default function LifecycleIntegrations({ organizationId, role }: { organi
         <div className="min-w-0">
           <p className="font-medium">{key.label}</p>
           <p className="caption-style text-subtle">{key.source} · {key.environment} · {key.tokenPrefix}… ·
-            {key.revokedAt ? " Revoked" : key.expiresAt <= Date.now() ? " Expired" : " Active"}</p>
+            {key.revokedAt ? " Revoked" : key.expiresAt <= renderedAt ? " Expired" : " Active"}</p>
         </div>
         {!key.revokedAt && <Button variant="secondary" size="sm" onClick={() => void remove(key._id)}>Revoke</Button>}
       </div>)}
