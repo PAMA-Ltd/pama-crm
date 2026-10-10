@@ -202,7 +202,7 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
               </article>) : <p className="text-subtle">No segments yet.</p>)}
             {mode === "campaigns" && (campaigns?.length ? campaigns.map(row =>
               <article key={row._id} className={itemClass}>
-                <h3 className="font-medium">{row.name} · {row.status === "active" && !lifecycleOn ? "suspended (Lifecycle disabled)" : row.status}</h3>
+                <h3 className="font-medium">{row.name} · {row.status}</h3>
                 <p className="caption-style text-subtle mt-1">Subject: {row.subject}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button className={buttonClass} onClick={() => setSelectedCampaign(row._id)}>Preview eligibility</button>
@@ -217,7 +217,7 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
               </article>) : <p className="text-subtle">No campaigns yet. Create a segment first.</p>)}
             {mode === "automations" && (automations?.length ? automations.map(row =>
               <article key={row._id} className={itemClass}>
-                <h3 className="font-medium">{row.name} · {row.status}</h3>
+                <h3 className="font-medium">{row.name} · {row.status === "active" && !lifecycleOn ? "suspended (Lifecycle disabled)" : row.status}</h3>
                 <p className="caption-style text-subtle mt-1">
                   When {row.source || "any source"} emits {row.eventType}, add tag “{row.tag}”
                 </p>
