@@ -5,7 +5,7 @@ import { requireOrganizationAdmin, requireOrganizationMember } from "./authz";
 import { eligibleForMarketing, isEventType, isSource, isTag, matchesSegment, nextTags } from "../lib/lifecycle/engagement";
 
 type Context = QueryCtx | MutationCtx;
-type Module = "lifecycle" | "campaigns" | "automations";
+type Module = "lifecycle" | "campaigns" | "automations" | "audience";
 const nameField = (value: string) => {
   const name = value.trim();
   if (!name || name.length > 100) throw new Error("Name must contain 1–100 characters.");
@@ -31,7 +31,10 @@ async function requireModule(ctx: Context, organizationId: Id<"organizations">, 
   if (!organization || organization.status !== "active") throw new Error("Active workspace required.");
   const settings = await ctx.db.query("organizationSettings")
     .withIndex("by_organization", q => q.eq("organizationId", organizationId)).unique();
-  if (!settings?.enabledModules.includes(module)) throw new Error("Workspace module is disabled.");
+  const hasModule = module === "audience"
+    ? Boolean(settings?.enabledModules.some(value => value === "lifecycle" || value === "campaigns"))
+    : Boolean(settings?.enabledModules.includes(module));
+  if (!hasModule) throw new Error("Workspace module is disabled.");
   return access;
 }
 async function getOwnedSegment(ctx: Context, organizationId: Id<"organizations">, segmentId: Id<"lifecycleSegments">) {
@@ -62,7 +65,7 @@ async function segmentPreview(ctx: Context, organizationId: Id<"organizations">,
 export const listSegments = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, { organizationId }) => {
-    await requireModule(ctx, organizationId, "lifecycle");
+    await requireModule(ctx, organizationId, "audience");
     return ctx.db.query("lifecycleSegments").withIndex("by_organization", q =>
       q.eq("organizationId", organizationId)).order("desc").take(100);
   },
@@ -72,7 +75,7 @@ export const createSegment = mutation({
     source: v.optional(v.string()), lastEventType: v.optional(v.string()),
     requiredTag: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const { identity } = await requireModule(ctx, args.organizationId, "lifecycle", true);
+    const { identity } = await requireModule(ctx, args.organizationId, "audience", true);
     const source = optionalSource(args.source);
     const lastEventType = optionalEventType(args.lastEventType);
     const requiredTag = optionalTag(args.requiredTag);
@@ -92,7 +95,7 @@ export const updateSegment = mutation({
     name: v.string(), source: v.optional(v.string()), lastEventType: v.optional(v.string()),
     requiredTag: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    await requireModule(ctx, args.organizationId, "lifecycle", true);
+    await requireModule(ctx, args.organizationId, "audience", true);
     await getOwnedSegment(ctx, args.organizationId, args.segmentId);
     await ctx.db.patch(args.segmentId, {
       name: nameField(args.name), source: optionalSource(args.source),
@@ -105,7 +108,7 @@ export const updateSegment = mutation({
 export const previewSegment = query({
   args: { organizationId: v.id("organizations"), segmentId: v.id("lifecycleSegments") },
   handler: async (ctx, args) => {
-    await requireModule(ctx, args.organizationId, "lifecycle");
+    await requireModule(ctx, args.organizationId, "audience");
     const segment = await getOwnedSegment(ctx, args.organizationId, args.segmentId);
     return segmentPreview(ctx, args.organizationId, segment);
   },
@@ -247,10 +250,11 @@ export async function applyTagAutomations(
   let tags = profile.tags ?? [];
   for (const rule of relevant) {
     const had = tags.includes(rule.tag);
-    if (!had) tags = nextTags(tags, rule.tag);
+    const atLimit = !had && tags.length >= 20;
+    if (!had && !atLimit) tags = nextTags(tags, rule.tag);
     await ctx.db.insert("lifecycleAutomationRuns", {
       organizationId, automationId: rule._id, profileId: event.profileId,
-      eventId: event.eventId, outcome: had ? "already_tagged" : "tagged",
+      eventId: event.eventId, outcome: atLimit ? "skipped_limit" : had ? "already_tagged" : "tagged",
       createdAt: Date.now(),
     });
   }

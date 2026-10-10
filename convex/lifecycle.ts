@@ -181,6 +181,10 @@ export const ingest = mutation({
         .eq("organizationId", key.organizationId).eq("source", key.source)
         .eq("subjectId", args.subjectId)).unique();
     const consent = consentFromEvent(args.type, normalized.propertiesJson);
+    // Consent events can arrive out of order. Older updates must not revive
+    // an address that already opted out (nor undo a newer opt-in).
+    const newConsentApplies = Boolean(consent && (!profile?.consentUpdatedAt ||
+      args.occurredAt >= profile.consentUpdatedAt));
     if (consent === "opt_in" && !(normalized.email || profile?.email)) {
       throw new Error("Explicit marketing opt-in requires a known email.");
     }
@@ -193,7 +197,7 @@ export const ingest = mutation({
       email: normalized.email, name: normalized.name, contactId: contact?._id,
       firstSeenAt: now, lastSeenAt: now, lastEventType: args.type,
       tags: [], marketingConsent: consent ?? undefined,
-      consentUpdatedAt: consent ? now : undefined,
+      consentUpdatedAt: consent ? args.occurredAt : undefined,
     });
     if (profile) {
       await ctx.db.patch(profile._id, {
@@ -201,7 +205,7 @@ export const ingest = mutation({
         name: normalized.name ?? profile.name,
         contactId: normalized.email ? contact?._id : profile.contactId,
         lastSeenAt: now, lastEventType: args.type,
-        ...(consent ? { marketingConsent: consent, consentUpdatedAt: now } : {}),
+        ...(newConsentApplies ? { marketingConsent: consent!, consentUpdatedAt: args.occurredAt } : {}),
       });
     }
     await ctx.db.insert("lifecycleEvents", {

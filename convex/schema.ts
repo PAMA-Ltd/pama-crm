@@ -287,7 +287,7 @@ export default defineSchema({
     automationId: v.id("lifecycleAutomations"),
     profileId: v.id("lifecycleProfiles"),
     eventId: v.string(),
-    outcome: v.union(v.literal("tagged"), v.literal("already_tagged")),
+    outcome: v.union(v.literal("tagged"), v.literal("already_tagged"), v.literal("skipped_limit")),
     createdAt: v.number(),
   }).index("by_organization_created", ["organizationId", "createdAt"]),
 

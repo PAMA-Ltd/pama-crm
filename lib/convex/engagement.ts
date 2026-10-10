@@ -7,7 +7,7 @@ export type CampaignRow = { _id: string; name: string; segmentId: string; subjec
 export type AutomationRow = { _id: string; name: string; source?: string; eventType: string;
   tag: string; status: "draft" | "active" | "paused"; createdAt: number };
 export type AutomationRun = { _id: string; automationId: string; eventId: string;
-  outcome: "tagged" | "already_tagged"; createdAt: number };
+  outcome: "tagged" | "already_tagged" | "skipped_limit"; createdAt: number };
 export type AudiencePreview = { matched: number; marketingEligible: number; suppressed: number;
   scanned: number; partial: boolean };
 const reference = makeFunctionReference;
