@@ -8,6 +8,7 @@ import { Input } from "@/components/_ui/input";
 import PageHeader from "@/components/crm/page-header";
 import { WORKSPACE_PRESET_IDS, WORKSPACE_PRESETS, type WorkspacePreset } from "@/lib/workspaces/presets";
 import WorkspaceLayoutSettings from "./workspace-layout-settings";
+import LifecycleIntegrations from "./lifecycle-integrations";
 import { useWorkspace } from "@/components/crm/workspace-provider";
 import {
   claimLegacyData,
@@ -138,6 +139,8 @@ export default function SettingsPage() {
             organizationId={organization._id}
             role={organization.role}
           />
+
+          <LifecycleIntegrations organizationId={organization._id} role={organization.role} />
 
           <section className="border-line-strong bg-card rounded-xl border p-4">
             <h2>Create another workspace</h2>

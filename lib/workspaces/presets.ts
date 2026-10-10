@@ -15,7 +15,7 @@ export type WorkspaceModule = (typeof WORKSPACE_MODULE_IDS)[number];
 
 export const WORKSPACE_MODULES: Record<WorkspaceModule, { label: string; ready: boolean; description: string }> = {
   sales: { label: "Sales", ready: true, description: "Companies, deals, pipelines and forecast" },
-  lifecycle: { label: "Lifecycle", ready: false, description: "Customer profiles and event timelines (upcoming)" },
+  lifecycle: { label: "Lifecycle", ready: true, description: "Customer event ingestion and event history" },
   campaigns: { label: "Campaigns", ready: false, description: "Audience campaigns and templates (upcoming)" },
   automations: { label: "Automations", ready: false, description: "Event-triggered workflows (upcoming)" },
 };
