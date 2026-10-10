@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import PageHeader from "@/components/crm/page-header";
 import { useWorkspace } from "@/components/crm/workspace-provider";
+import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
 import {
   archiveCampaign, createAutomation, createCampaign, createSegment,
   listAutomationRuns, listAutomations, listCampaigns, listSegments,
@@ -17,6 +18,8 @@ const buttonClass = "rounded-lg border border-line-strong px-3 py-2 text-sm font
 export default function EngagementPage({ mode }: { mode: Mode }) {
   const { organization } = useWorkspace();
   const organizationId = organization._id;
+  const layout = useQuery(getWorkspaceSettings, { organizationId });
+  const lifecycleOn = layout?.enabledModules.includes("lifecycle") ?? false;
   const canEdit = organization.role !== "member";
   const segments = useQuery(listSegments, mode !== "automations" ? { organizationId } : "skip");
   const campaigns = useQuery(listCampaigns, mode === "campaigns" ? { organizationId } : "skip");
@@ -83,6 +86,10 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
   }
   async function changeAutomation(id: string, status: "active" | "paused") {
     setError(""); setNotice("");
+    if (status === "active" && !lifecycleOn) {
+      setError("Enable Lifecycle in Workspace Settings before activating automations.");
+      return;
+    }
     if (status === "active" && !window.confirm(
       "Activate this automation? New matching events will update profile tags automatically."
     )) return;
@@ -123,6 +130,10 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
                 ? "Prepare consent-aware email content and preview eligibility. Sending is disabled until consent and delivery verification are complete."
                 : "Active rules add a tag on new matching events. No messages are sent or workflows run outside this workspace."}
           </p>
+          {mode === "automations" && !lifecycleOn && <p role="alert" className="mt-2 text-sm">
+            Lifecycle ingestion is disabled. Automations cannot run until enabled in Workspace Settings.
+            Existing active rules are suspended, and new rules cannot be activated.
+          </p>}
         </section>
         {canEdit && <section className={itemClass}>
           <h2 className="font-medium">{editingId ? "Edit" : "Create"} {mode === "segments" ? "segment"
@@ -191,7 +202,7 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
               </article>) : <p className="text-subtle">No segments yet.</p>)}
             {mode === "campaigns" && (campaigns?.length ? campaigns.map(row =>
               <article key={row._id} className={itemClass}>
-                <h3 className="font-medium">{row.name} · {row.status}</h3>
+                <h3 className="font-medium">{row.name} · {row.status === "active" && !lifecycleOn ? "suspended (Lifecycle disabled)" : row.status}</h3>
                 <p className="caption-style text-subtle mt-1">Subject: {row.subject}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button className={buttonClass} onClick={() => setSelectedCampaign(row._id)}>Preview eligibility</button>
@@ -210,7 +221,9 @@ export default function EngagementPage({ mode }: { mode: Mode }) {
                 <p className="caption-style text-subtle mt-1">
                   When {row.source || "any source"} emits {row.eventType}, add tag “{row.tag}”
                 </p>
-                {canEdit && <button className={buttonClass + " mt-2"} onClick={() => void changeAutomation(
+                {canEdit && <button disabled={row.status !== "active" && !lifecycleOn}
+                  title={row.status !== "active" && !lifecycleOn ? "Enable Lifecycle ingestion first" : undefined}
+                  className={buttonClass + " mt-2"} onClick={() => void changeAutomation(
                   row._id, row.status === "active" ? "paused" : "active"
                 )}>{row.status === "active" ? "Pause" : "Activate"}</button>}
               </article>) : <p className="text-subtle">No automation rules yet.</p>)}

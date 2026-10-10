@@ -278,3 +278,43 @@ test("changing a profile email cannot carry forward old address marketing opt-in
   const preview=await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:id});
   assert.equal(preview.marketingEligible,0);
 });
+
+test("out-of-order arrivals preserve chronologically newest event type for segments", async () => {
+  const f=fixture();
+  const rule=await segment(f,{lastEventType:"order_paid"});
+  await ingest.ingest._handler(f.ctx,event("paid-new","order_paid",{occurredAt:baseTime}));
+  await ingest.ingest._handler(f.ctx,event("old-view","page_viewed",{occurredAt:baseTime-3000}));
+  let profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.lastEventType,"order_paid");
+  assert.equal(profile.lastEventOccurredAt,baseTime);
+  assert.equal((await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:rule})).matched,1);
+  await ingest.ingest._handler(f.ctx,event("same-time","page_viewed",{occurredAt:baseTime}));
+  profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.lastEventType,"order_paid","equal time must not reorder last event");
+  await ingest.ingest._handler(f.ctx,event("truly-new","order_delivered",{occurredAt:baseTime+1000}));
+  profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.lastEventType,"order_delivered");
+  assert.equal(profile.lastEventOccurredAt,baseTime+1000);
+  assert.equal((await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:rule})).matched,0);
+});
+
+test("automation-only mode refuses activation and disabled Lifecycle suspends active rules", async () => {
+  const f=fixture({modules:["automations"]});
+  const id=await actions.createAutomation._handler(f.ctx,{
+    organizationId:f.a,name:"Buyer tag",eventType:"order_paid",tag:"buyer"
+  });
+  await assert.rejects(actions.setAutomationStatus._handler(f.ctx,{
+    organizationId:f.a,automationId:id,status:"active"
+  }),/Enable Lifecycle event ingestion/);
+  assert.equal(f.tables.lifecycleAutomations.get(id).status,"draft");
+  const cfg=[...f.tables.organizationSettings.values()].find(x=>x.organizationId===f.a);
+  await f.ctx.db.patch(cfg._id,{enabledModules:["automations","lifecycle"]});
+  await actions.setAutomationStatus._handler(f.ctx,{organizationId:f.a,automationId:id,status:"active"});
+  assert.equal(f.tables.lifecycleAutomations.get(id).status,"active");
+  await f.ctx.db.patch(cfg._id,{enabledModules:["automations"]});
+  await assert.rejects(ingest.ingest._handler(f.ctx,event("blocked","order_paid")),
+    /workspace access denied/);
+  assert.equal(f.tables.lifecycleAutomationRuns.size,0);
+  await actions.setAutomationStatus._handler(f.ctx,{organizationId:f.a,automationId:id,status:"paused"});
+  assert.equal(f.tables.lifecycleAutomations.get(id).status,"paused");
+});

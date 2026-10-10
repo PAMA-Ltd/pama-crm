@@ -231,6 +231,13 @@ export const setAutomationStatus = mutation({
     await requireModule(ctx, args.organizationId, "automations", true);
     const rule = await ctx.db.get(args.automationId);
     if (!rule || rule.organizationId !== args.organizationId) throw new Error("Automation not found.");
+    if (args.status === "active") {
+      const settings = await ctx.db.query("organizationSettings")
+        .withIndex("by_organization", q => q.eq("organizationId", args.organizationId)).unique();
+      if (!settings?.enabledModules.includes("lifecycle")) {
+        throw new Error("Enable Lifecycle event ingestion before activating automations.");
+      }
+    }
     await ctx.db.patch(args.automationId, { status: args.status, updatedAt: Date.now() });
     return null;
   },

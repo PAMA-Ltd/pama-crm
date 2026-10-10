@@ -195,16 +195,25 @@ export const ingest = mutation({
     const profileId = profile ? profile._id : await ctx.db.insert("lifecycleProfiles", {
       organizationId: key.organizationId, source: key.source, subjectId: args.subjectId,
       email: normalized.email, name: normalized.name, contactId: contact?._id,
-      firstSeenAt: now, lastSeenAt: now, lastEventType: args.type,
+      firstSeenAt: now, lastSeenAt: now,
+      lastEventType: args.type, lastEventOccurredAt: args.occurredAt,
       tags: [], marketingConsent: consent ?? undefined,
       consentUpdatedAt: consent ? args.occurredAt : undefined,
     });
     if (profile) {
+      // Segment "last event" is event-time (occurredAt), not receipt-time.
+      // A delayed delivery or tied timestamp never replaces a newer event.
+      // Legacy profiles without event-time metadata initialize on their next event.
+      const isNewerEvent = profile.lastEventOccurredAt === undefined ||
+        args.occurredAt > profile.lastEventOccurredAt;
       await ctx.db.patch(profile._id, {
         email: normalized.email ?? profile.email,
         name: normalized.name ?? profile.name,
         contactId: normalized.email ? contact?._id : profile.contactId,
-        lastSeenAt: now, lastEventType: args.type,
+        lastSeenAt: now,
+        ...(isNewerEvent ? {
+          lastEventType: args.type, lastEventOccurredAt: args.occurredAt,
+        } : {}),
         // A new email does not inherit consent given to a different address.
         // Without an explicit newer opt-in, conservatively suppress this address.
         ...(normalized.email && profile.email && normalized.email !== profile.email &&

@@ -240,6 +240,7 @@ export default defineSchema({
     firstSeenAt: v.number(),
     lastSeenAt: v.number(),
     lastEventType: v.optional(v.string()),
+    lastEventOccurredAt: v.optional(v.number()),
     tags: v.optional(v.array(v.string())),
     marketingConsent: v.optional(v.union(v.literal("opt_in"), v.literal("opt_out"))),
     consentUpdatedAt: v.optional(v.number()),

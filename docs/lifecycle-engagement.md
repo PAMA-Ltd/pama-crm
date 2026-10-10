@@ -4,7 +4,7 @@ Stacked development on PR #8; **do not deploy or merge** before independent QA a
 
 ## Features and authorization
 
-- Organization owners/admins create and edit **dynamic Segments** filtering by source, most recent event type, and profile tag. Members can view and preview. Segment definitions are scoped by organization ID in both backend handlers and indexes.
+- Organization owners/admins create and edit **dynamic Segments** filtering by source, chronologically latest event type (occurredAt), and profile tag. Members can view and preview. Segment definitions are scoped by organization ID in both backend handlers and indexes.
 - **Campaign drafts** store name, audience segment, subject and body. Owners/admins may edit/archive. Previews count matching profiles, suppressed profiles and consent-eligible profiles. **There is no dispatch/send operation** in this phase; mail delivery is explicitly disabled.
 - **Automations** are safe server-side `tag_profile` rules: an active rule matches an incoming event type and optional source, and adds a tag to the matching organization's lifecycle profile. Activation is owner/admin-only and requires confirmation. Results are audited as tagged, already tagged, or skipped because the profile's 20-tag limit was reached. Duplicate eventId deliveries are not executed again; paused rules do nothing.
 - **Consent** is not inferred from email, purchase, or registration. Only a signed `marketing_consent_updated` event with `properties: { "consent": "opt_in" | "opt_out" }` changes it. A new opt-in requires a known profile email. Older out-of-order consent changes cannot overwrite more recent consent. Unknown and opt-out profiles are suppressed.
@@ -29,3 +29,15 @@ For preview eligibility, opted-out profiles suppress the same email across
 different sources *within the same organization*, and shared addresses are
 deduplicated. A changed email address does not inherit previous opt-in. These
 are still bounded previews, **never** a send-ready list.
+
+### Ordering and module dependencies
+
+The last event type is determined by event `occurredAt`, not receipt time. The
+first event wins if timestamps tie; older delayed deliveries cannot silently
+change the audience. `lastSeenAt` still records ingestion time. Legacy profiles
+without `lastEventOccurredAt` initialize the value on the next event.
+
+Automations may be drafted with the Automations module alone, but **activation
+requires Lifecycle to be enabled**. If Lifecycle is subsequently disabled,
+incoming events are rejected and existing active rules are visibly **suspended**
+until it is re-enabled. Pausing is still allowed while Lifecycle is off.
