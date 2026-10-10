@@ -3,6 +3,8 @@ import type { Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { requireOrganizationAdmin, requireOrganizationMember } from "./authz";
 import { validIntegrationSource, normalizeLifecycleEvent } from "../lib/lifecycle/event-contract";
+import { consentFromEvent } from "../lib/lifecycle/engagement";
+import { applyTagAutomations } from "./lifecycleEngagement";
 
 const environmentValidator = v.union(v.literal("staging"), v.literal("production"));
 const EVENT_RATE_WINDOW_MS = 60_000;
@@ -188,6 +190,14 @@ export const ingest = mutation({
       .withIndex("by_organization_source_subject", q => q
         .eq("organizationId", key.organizationId).eq("source", key.source)
         .eq("subjectId", args.subjectId)).unique();
+    const consent = consentFromEvent(args.type, normalized.propertiesJson);
+    // Consent events can arrive out of order. Older updates must not revive
+    // an address that already opted out (nor undo a newer opt-in).
+    const newConsentApplies = Boolean(consent && (!profile?.consentUpdatedAt ||
+      args.occurredAt > profile.consentUpdatedAt));
+    if (consent === "opt_in" && !(normalized.email || profile?.email)) {
+      throw new Error("Explicit marketing opt-in requires a known email.");
+    }
     const contact = normalized.email
       ? await ctx.db.query("contacts").withIndex("by_organization_and_email", q => q
         .eq("organizationId", key.organizationId).eq("normalizedEmail", normalized.email)).unique()
@@ -196,13 +206,32 @@ export const ingest = mutation({
       organizationId: key.organizationId, source: key.source, subjectId: args.subjectId,
       email: normalized.email, name: normalized.name, contactId: contact?._id,
       firstSeenAt: now, lastSeenAt: now,
+      lastEventType: args.type, lastEventOccurredAt: args.occurredAt,
+      tags: [], marketingConsent: consent ?? undefined,
+      consentUpdatedAt: consent ? args.occurredAt : undefined,
     });
     if (profile) {
+      // Segment "last event" is event-time (occurredAt), not receipt-time.
+      // A delayed delivery or tied timestamp never replaces a newer event.
+      // Legacy profiles without event-time metadata initialize on their next event.
+      const isNewerEvent = profile.lastEventOccurredAt === undefined ||
+        args.occurredAt > profile.lastEventOccurredAt;
       await ctx.db.patch(profile._id, {
         email: normalized.email ?? profile.email,
         name: normalized.name ?? profile.name,
         contactId: normalized.email ? contact?._id : profile.contactId,
         lastSeenAt: now,
+        ...(isNewerEvent ? {
+          lastEventType: args.type, lastEventOccurredAt: args.occurredAt,
+        } : {}),
+        // A new email does not inherit consent given to a different address.
+        // Without an explicit newer opt-in, conservatively suppress this address.
+        ...(normalized.email && profile.email && normalized.email !== profile.email &&
+          !newConsentApplies
+          ? { marketingConsent: "opt_out" as const, consentUpdatedAt: args.occurredAt }
+          : newConsentApplies
+            ? { marketingConsent: consent!, consentUpdatedAt: args.occurredAt }
+            : {}),
       });
     }
     await ctx.db.insert("lifecycleEvents", {
@@ -211,6 +240,10 @@ export const ingest = mutation({
       eventId: args.eventId, type: args.type, propertiesJson: normalized.propertiesJson,
       email: normalized.email, name: normalized.name,
       occurredAt: args.occurredAt, receivedAt: now,
+    });
+    await applyTagAutomations(ctx, key.organizationId, {
+      profileId, source: key.source, type: args.type, eventId: args.eventId,
+      occurredAt: args.occurredAt,
     });
     await ctx.db.insert("lifecycleIngressAudit", {
       organizationId: key.organizationId, integrationId: key._id,

@@ -17,10 +17,15 @@ export default function WorkspaceRouteGuard({ children }: { children: ReactNode 
   const { organization } = useWorkspace();
   const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
   const isSalesPage = isSalesOnlyRoute(pathname);
-  const guarded = isSalesPage || pathname === "/events";
+  const requiredModule = pathname === "/events" ? "lifecycle"
+    : pathname === "/campaigns" ? "campaigns"
+    : pathname === "/automations" ? "automations" : null;
+  const isSegmentsPage = pathname === "/segments";
+  const guarded = isSalesPage || Boolean(requiredModule) || isSegmentsPage;
   const blocked = layout !== undefined && (
     (isSalesPage && !layout.enabledModules.includes("sales")) ||
-    (pathname === "/events" && !layout.enabledModules.includes("lifecycle"))
+    (requiredModule !== null && !layout.enabledModules.includes(requiredModule)) ||
+    (isSegmentsPage && !layout.enabledModules.includes("lifecycle") && !layout.enabledModules.includes("campaigns"))
   );
 
   useEffect(() => {

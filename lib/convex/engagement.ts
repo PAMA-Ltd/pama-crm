@@ -1,0 +1,26 @@
+import { makeFunctionReference } from "convex/server";
+
+export type SegmentRow = { _id: string; name: string; source?: string; lastEventType?: string;
+  requiredTag?: string; organizationId: string; createdAt: number; updatedAt: number };
+export type CampaignRow = { _id: string; name: string; segmentId: string; subject: string; body: string;
+  status: "draft" | "archived"; createdAt: number; updatedAt: number };
+export type AutomationRow = { _id: string; name: string; source?: string; eventType: string;
+  tag: string; status: "draft" | "active" | "paused"; createdAt: number };
+export type AutomationRun = { _id: string; automationId: string; eventId: string;
+  outcome: "tagged" | "already_tagged" | "skipped_limit"; createdAt: number };
+export type AudiencePreview = { matched: number; marketingEligible: number; suppressed: number;
+  scanned: number; partial: boolean };
+const reference = makeFunctionReference;
+export const listSegments = reference<"query",{organizationId:string},SegmentRow[]>("lifecycleEngagement:listSegments");
+export const createSegment = reference<"mutation",{organizationId:string;name:string;source?:string;lastEventType?:string;requiredTag?:string},string>("lifecycleEngagement:createSegment");
+export const updateSegment = reference<"mutation",{organizationId:string;segmentId:string;name:string;source?:string;lastEventType?:string;requiredTag?:string},null>("lifecycleEngagement:updateSegment");
+export const previewSegment = reference<"query",{organizationId:string;segmentId:string},AudiencePreview>("lifecycleEngagement:previewSegment");
+export const listCampaigns = reference<"query",{organizationId:string},CampaignRow[]>("lifecycleEngagement:listCampaigns");
+export const createCampaign = reference<"mutation",{organizationId:string;segmentId:string;name:string;subject:string;body:string},string>("lifecycleEngagement:createCampaign");
+export const updateCampaign = reference<"mutation",{organizationId:string;campaignId:string;segmentId:string;name:string;subject:string;body:string},null>("lifecycleEngagement:updateCampaign");
+export const archiveCampaign = reference<"mutation",{organizationId:string;campaignId:string},null>("lifecycleEngagement:archiveCampaign");
+export const previewCampaign = reference<"query",{organizationId:string;campaignId:string},AudiencePreview & {dispatchEnabled:false}>("lifecycleEngagement:previewCampaign");
+export const listAutomations = reference<"query",{organizationId:string},AutomationRow[]>("lifecycleEngagement:listAutomations");
+export const createAutomation = reference<"mutation",{organizationId:string;name:string;eventType:string;source?:string;tag:string},string>("lifecycleEngagement:createAutomation");
+export const setAutomationStatus = reference<"mutation",{organizationId:string;automationId:string;status:"active"|"paused"},null>("lifecycleEngagement:setAutomationStatus");
+export const listAutomationRuns = reference<"query",{organizationId:string},AutomationRun[]>("lifecycleEngagement:listAutomationRuns");

@@ -43,6 +43,8 @@ export default function SidebarContent() {
   const layout = useQuery(getWorkspaceSettings, { organizationId: organization._id });
   const salesVisible = layout?.enabledModules.includes("sales") ?? false;
   const lifecycleVisible = layout?.enabledModules.includes("lifecycle") ?? false;
+  const campaignsVisible = layout?.enabledModules.includes("campaigns") ?? false;
+  const automationsVisible = layout?.enabledModules.includes("automations") ?? false;
   const { companies } = useCompanies();
   const { contacts } = useContacts();
   const { deals } = useDeals();
@@ -87,6 +89,12 @@ export default function SidebarContent() {
               active={pathname === "/activities"} />
             {lifecycleVisible && <SidebarNavItem icon={ListIcon} label="Events" href="/events"
               active={pathname === "/events"} />}
+            {(lifecycleVisible || campaignsVisible) && <SidebarNavItem icon={UsersIcon}
+              label="Segments" href="/segments" active={pathname === "/segments"} />}
+            {campaignsVisible && <SidebarNavItem icon={MailIcon}
+              label="Campaigns" href="/campaigns" active={pathname === "/campaigns"} />}
+            {automationsVisible && <SidebarNavItem icon={TargetIcon}
+              label="Automations" href="/automations" active={pathname === "/automations"} />}
             {salesVisible && (
               <SidebarNavItem icon={MailIcon} label="Email Sequences"
                 href="/sequences" active={pathname === "/sequences"} />
