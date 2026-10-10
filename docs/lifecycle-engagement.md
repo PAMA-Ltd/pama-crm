@@ -24,3 +24,8 @@ Run focused Node handler/predicate tests for tenant/RBAC isolation, cross-org se
 previous decision wins; tied opt-in must not override an existing opt-out.
 Out-of-order older events never reverse a newer choice. Opt-in without a known
 profile email is rejected.
+
+For preview eligibility, opted-out profiles suppress the same email across
+different sources *within the same organization*, and shared addresses are
+deduplicated. A changed email address does not inherit previous opt-in. These
+are still bounded previews, **never** a send-ready list.

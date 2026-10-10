@@ -53,10 +53,24 @@ async function segmentPreview(ctx: Context, organizationId: Id<"organizations">,
     .order("desc").take(PROFILE_SCAN_MAX + 1);
   const sampled = profiles.slice(0, PROFILE_SCAN_MAX);
   const matched = sampled.filter(profile => matchesSegment(profile, segment));
+  // Consent is address-specific, not a grant for every source's profile.
+  // Any observed opt-out for the same address suppresses it across sources.
+  // Deduplicate addresses so one customer is never counted twice.
+  const optedOutEmails = new Set(sampled.filter(p => p.marketingConsent === "opt_out" && p.email)
+    .map(p => p.email!.toLowerCase()));
+  const countedEmails = new Set<string>();
+  let marketingEligible = 0;
+  for (const profile of matched) {
+    const email = profile.email?.toLowerCase();
+    if (!email || !eligibleForMarketing(profile) || optedOutEmails.has(email) ||
+        countedEmails.has(email)) continue;
+    countedEmails.add(email);
+    marketingEligible += 1;
+  }
   return {
     matched: matched.length,
-    marketingEligible: matched.filter(eligibleForMarketing).length,
-    suppressed: matched.filter(profile => !eligibleForMarketing(profile)).length,
+    marketingEligible,
+    suppressed: matched.length - marketingEligible,
     scanned: sampled.length,
     partial: profiles.length > PROFILE_SCAN_MAX,
   };

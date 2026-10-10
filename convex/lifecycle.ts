@@ -205,7 +205,14 @@ export const ingest = mutation({
         name: normalized.name ?? profile.name,
         contactId: normalized.email ? contact?._id : profile.contactId,
         lastSeenAt: now, lastEventType: args.type,
-        ...(newConsentApplies ? { marketingConsent: consent!, consentUpdatedAt: args.occurredAt } : {}),
+        // A new email does not inherit consent given to a different address.
+        // Without an explicit newer opt-in, conservatively suppress this address.
+        ...(normalized.email && profile.email && normalized.email !== profile.email &&
+          !newConsentApplies
+          ? { marketingConsent: "opt_out" as const, consentUpdatedAt: args.occurredAt }
+          : newConsentApplies
+            ? { marketingConsent: consent!, consentUpdatedAt: args.occurredAt }
+            : {}),
       });
     }
     await ctx.db.insert("lifecycleEvents", {

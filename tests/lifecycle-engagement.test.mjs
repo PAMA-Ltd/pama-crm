@@ -245,3 +245,36 @@ test("disabled automation module never runs rules, and missing email rejects opt
       email:undefined,propertiesJson:'{"consent":"opt_in"}',
     })),/requires a known email/);
 });
+
+test("marketing preview deduplicates email and honors opt-outs across sources",async()=>{
+  const f=fixture();const id=await segment(f,{source:undefined});
+  f.insert("lifecycleProfiles",{organizationId:f.a,source:"pamastore",subjectId:"buyer1",
+    lastSeenAt:5,email:"same@example.test",marketingConsent:"opt_in"});
+  f.insert("lifecycleProfiles",{organizationId:f.a,source:"track",subjectId:"buyer2",
+    lastSeenAt:4,email:"same@example.test",marketingConsent:"opt_out"});
+  f.insert("lifecycleProfiles",{organizationId:f.a,source:"pamastore",subjectId:"buyer3",
+    lastSeenAt:3,email:"unique@example.test",marketingConsent:"opt_in"});
+  f.insert("lifecycleProfiles",{organizationId:f.b,source:"track",subjectId:"outsider",
+    lastSeenAt:8,email:"unique@example.test",marketingConsent:"opt_out"});
+  const preview=await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:id});
+  assert.equal(preview.matched,3);assert.equal(preview.marketingEligible,1);
+  assert.equal(preview.suppressed,2); // opposite organization opt-out is irrelevant
+});
+
+test("changing a profile email cannot carry forward old address marketing opt-in",async()=>{
+  const f=fixture();
+  await ingest.ingest._handler(f.ctx,event("optin","marketing_consent_updated",{
+    occurredAt:baseTime-1000,propertiesJson:'{"consent":"opt_in"}'
+  }));
+  let profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.marketingConsent,"opt_in");
+  await ingest.ingest._handler(f.ctx,event("new-address","order_paid",{
+    occurredAt:baseTime,email:"new@example.test",
+  }));
+  profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.email,"new@example.test");
+  assert.equal(profile.marketingConsent,"opt_out");
+  const id=await segment(f);
+  const preview=await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:id});
+  assert.equal(preview.marketingEligible,0);
+});
