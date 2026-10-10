@@ -68,6 +68,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message.includes("rate limit exceeded")) return response("Integration rate limit exceeded.", 429);
+    if (message.includes("already used for different content")) return response("Event ID conflicts with an existing event.", 409);
     if (message.includes("not configured")) return response("Lifecycle event ingestion is not configured.", 503);
     if (message.includes("Invalid integration credential") ||
         message.includes("workspace access denied") || message.includes("environment mismatch")) {

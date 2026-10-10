@@ -71,6 +71,18 @@ export const revokeIntegration = mutation({
   },
 });
 
+export const listIngressAudit = query({
+  args: { organizationId: v.id("organizations"), limit: v.optional(v.number()) },
+  handler: async (ctx, { organizationId, limit }) => {
+    await requireOrganizationAdmin(ctx, organizationId);
+    const rows = await ctx.db.query("lifecycleIngressAudit")
+      .withIndex("by_organization_created", q => q.eq("organizationId", organizationId))
+      .order("desc").take(Math.min(50, Math.max(1, Math.floor(limit ?? 20))));
+    return rows.map(({ _id, integrationId, eventId, outcome, createdAt }) =>
+      ({ _id, integrationId, eventId, outcome, createdAt }));
+  },
+});
+
 export const listEvents = query({
   args: { organizationId: v.id("organizations"), limit: v.optional(v.number()) },
   handler: async (ctx, { organizationId, limit }) => {

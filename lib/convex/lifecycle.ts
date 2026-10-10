@@ -22,3 +22,11 @@ export const revokeLifecycleIntegration = makeFunctionReference<"mutation", {
 export const listLifecycleEvents = makeFunctionReference<"query", {
   organizationId: string; limit?: number;
 }, LifecycleEventSummary[]>("lifecycle:listEvents");
+
+export type LifecycleIngressAudit = {
+  _id: string; integrationId: string; eventId: string;
+  outcome: "accepted" | "duplicate"; createdAt: number;
+};
+export const listLifecycleIngressAudit = makeFunctionReference<"query", {
+  organizationId: string; limit?: number;
+}, LifecycleIngressAudit[]>("lifecycle:listIngressAudit");

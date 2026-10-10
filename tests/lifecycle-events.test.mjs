@@ -130,6 +130,7 @@ test("ingestion is atomic, idempotent, scoped, rate limited, and contact linked"
   const retry=await lifecycle.ingest._handler(f.ctx,common);
   assert.deepEqual(retry,{accepted:true,duplicate:true,eventId:"event-1"});
   assert.equal(f.tables.lifecycleEvents.size,1);
+  assert.equal(f.tables.lifecycleIngressAudit.size,2);
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,type:"order_delivered"}),/different content/);
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,organizationSlug:"track"}),/workspace access denied/);
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,source:"track"}),/Invalid integration credential/);
@@ -137,11 +138,17 @@ test("ingestion is atomic, idempotent, scoped, rate limited, and contact linked"
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,bridgeSecret:"wrong"}),/Invalid integration credential/);
   const key=[...f.tables.lifecycleIntegrationKeys.values()][0];
   assert.ok(key.rateCalls >= 2); // In-memory mock does not roll back rejected mutations.
+  f.as("admin");
+  assert.equal((await lifecycle.listIngressAudit._handler(f.ctx,{organizationId:f.orgA})).length,2);
   f.as("member");
+  await assert.rejects(lifecycle.listIngressAudit._handler(f.ctx,{organizationId:f.orgA}),/admin access/);
   assert.equal((await lifecycle.listEvents._handler(f.ctx,{organizationId:f.orgA})).length,1);
   f.as("other");
   await assert.rejects(lifecycle.listEvents._handler(f.ctx,{organizationId:f.orgA}),/do not have access/);
   f.as("admin");
+  // A token with a full active window cannot publish an additional event.
+  await f.ctx.db.patch(key._id, {rateWindowAt:Date.now(),rateCalls:120});
+  await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,eventId:"event-2"}),/rate limit/);
   await lifecycle.revokeIntegration._handler(f.ctx,{organizationId:f.orgA,integrationId:key._id});
   await assert.rejects(lifecycle.ingest._handler(f.ctx,{...common,eventId:"event-2"}),/Invalid integration credential/);
 });

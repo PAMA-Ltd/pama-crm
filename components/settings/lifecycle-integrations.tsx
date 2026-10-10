@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import Button from "@/components/_ui/button";
 import { getWorkspaceSettings } from "@/lib/convex/workspace-settings";
-import { createLifecycleIntegration, listLifecycleIntegrations, revokeLifecycleIntegration } from "@/lib/convex/lifecycle";
+import { createLifecycleIntegration, listLifecycleIntegrations, listLifecycleIngressAudit, revokeLifecycleIntegration } from "@/lib/convex/lifecycle";
 import { validIntegrationSource } from "@/lib/lifecycle/event-contract";
 
 type Role = "owner" | "admin" | "member";
@@ -13,6 +13,7 @@ export default function LifecycleIntegrations({ organizationId, role }: { organi
   const admin = role !== "member";
   const settings = useQuery(getWorkspaceSettings, { organizationId });
   const integrations = useQuery(listLifecycleIntegrations, admin ? { organizationId } : "skip");
+  const audit = useQuery(listLifecycleIngressAudit, admin ? { organizationId, limit: 20 } : "skip");
   const register = useMutation(createLifecycleIntegration);
   const revoke = useMutation(revokeLifecycleIntegration);
   const [source, setSource] = useState("pamastore");
@@ -96,6 +97,16 @@ export default function LifecycleIntegrations({ organizationId, role }: { organi
         </div>
         {!key.revokedAt && <Button variant="secondary" size="sm" onClick={() => void remove(key._id)}>Revoke</Button>}
       </div>)}
+      <div className="mt-5 border-t pt-4">
+        <h3 className="font-medium">Recent ingestion audit</h3>
+        {audit?.length ? audit.map(entry => <div key={entry._id}
+          className="caption-style text-subtle mt-2 flex flex-wrap justify-between gap-2">
+          <span>{entry.outcome === "accepted" ? "Accepted" : "Duplicate"} · {entry.eventId}</span>
+          <time dateTime={new Date(entry.createdAt).toISOString()}>
+            {new Date(entry.createdAt).toLocaleString()}
+          </time>
+        </div>) : <p className="caption-style text-subtle mt-2">No accepted or duplicate deliveries yet.</p>}
+      </div>
     </>}
     {error && <p role="alert" className="caption-style text-danger mt-3">{error}</p>}
   </section>;
