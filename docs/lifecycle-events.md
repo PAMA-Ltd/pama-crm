@@ -20,7 +20,7 @@ workspace module preference and precedes LDT-48's Segments/Campaigns/Automations
    source (`pamastore`, `track`, etc.) and environment. Copy it **once** and
    store only in the source product's **server-side** environment.
 6. Rotate by creating a second key, switching the producer, then revoking the
-   first; keys expire after 90 days. Do not put tokens into client JS.
+   first; server-side validity is capped at 90 days (plus at most five minutes\n   of clock-skew tolerance). Do not put tokens into client JS.
 
 ## Endpoint
 
@@ -44,7 +44,7 @@ and `Content-Type: application/json`. 32 KiB maximum encoded body.
 
 - `eventId` must be unique per organization/source/environment. Exact retries
   return `{accepted:true,duplicate:true,eventId}`. Reuse of that ID with
-  different content rejects the mutation (no overwrite).
+  different content—including changed normalized email or name—rejects the mutation\n  with an HTTP 409 (no overwrite). Event rows store immutable email/name\n  snapshots separately from the mutable customer profile. Older rows without\n  snapshots fail closed on unverifiable identity changes.
 - Identities are matched by `source + subjectId` **inside one organization**.
   An existing same-organization CRM contact may be linked by normalized email;
   event ingestion never creates a Sales contact automatically.

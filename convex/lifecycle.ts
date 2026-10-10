@@ -46,8 +46,12 @@ export const registerIntegration = mutation({
     if (!/^[a-f0-9]{64}$/.test(args.tokenHash) || !/^pama_evt_[a-f0-9]{11}$/.test(args.tokenPrefix)) {
       throw new Error("Invalid credential metadata.");
     }
-    if (args.expiresAt <= Date.now() || args.expiresAt > Date.now() + 366 * 86_400_000) {
-      throw new Error("Credential expiry must be within one year.");
+    const issuedAt = Date.now();
+    const maxAge = 90 * 86_400_000;
+    // Allow five minutes only to absorb skew between the admin's clock and
+    // Convex, not a longer credential lifetime.
+    if (args.expiresAt <= issuedAt || args.expiresAt > issuedAt + maxAge + 5 * 60_000) {
+      throw new Error("Credential expiry must be within 90 days.");
     }
     if (await ctx.db.query("lifecycleIntegrationKeys").withIndex("by_hash", q => q.eq("tokenHash", args.tokenHash)).unique()) {
       throw new Error("Credential already exists.");
@@ -163,9 +167,15 @@ export const ingest = mutation({
     if (existing) {
       // A reused eventId with different content is a conflict, not a retry.
       const existingProfile = await ctx.db.get(existing.profileId);
+      // Compare the immutable event snapshot, NEVER the current (mutable)
+      // profile's email or display name. A later valid event may change them.
+      // Pre-existing event rows without identity snapshots fail closed when a
+      // retry claims identity metadata we cannot verify.
       if (existing.type !== args.type || existing.occurredAt !== args.occurredAt ||
           existing.propertiesJson !== args.propertiesJson ||
-          existingProfile?.subjectId !== args.subjectId) {
+          existingProfile?.subjectId !== args.subjectId ||
+          existing.email !== normalized.email ||
+          existing.name !== normalized.name) {
         throw new Error("Event ID already used for different content.");
       }
       await ctx.db.insert("lifecycleIngressAudit", {
@@ -199,6 +209,7 @@ export const ingest = mutation({
       organizationId: key.organizationId, integrationId: key._id, profileId,
       source: key.source, environment: key.environment,
       eventId: args.eventId, type: args.type, propertiesJson: normalized.propertiesJson,
+      email: normalized.email, name: normalized.name,
       occurredAt: args.occurredAt, receivedAt: now,
     });
     await ctx.db.insert("lifecycleIngressAudit", {
