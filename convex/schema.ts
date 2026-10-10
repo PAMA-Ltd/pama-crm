@@ -213,6 +213,60 @@ export default defineSchema({
     .index("by_sequence_and_contact", ["sequenceId", "contactId"])
     .index("by_status_and_next", ["status", "nextStepAt"]),
 
+  lifecycleIntegrationKeys: defineTable({
+    organizationId: v.id("organizations"),
+    source: v.string(),
+    environment: v.union(v.literal("staging"), v.literal("production")),
+    label: v.string(),
+    tokenHash: v.string(),
+    tokenPrefix: v.string(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    rateWindowAt: v.optional(v.number()),
+    rateCalls: v.optional(v.number()),
+  })
+    .index("by_hash", ["tokenHash"])
+    .index("by_organization", ["organizationId"]),
+
+  lifecycleProfiles: defineTable({
+    organizationId: v.id("organizations"),
+    source: v.string(),
+    subjectId: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    contactId: v.optional(v.id("contacts")),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_organization_source_subject", ["organizationId", "source", "subjectId"])
+    .index("by_organization_last_seen", ["organizationId", "lastSeenAt"]),
+
+  lifecycleEvents: defineTable({
+    organizationId: v.id("organizations"),
+    integrationId: v.id("lifecycleIntegrationKeys"),
+    profileId: v.id("lifecycleProfiles"),
+    source: v.string(),
+    environment: v.union(v.literal("staging"), v.literal("production")),
+    eventId: v.string(),
+    type: v.string(),
+    propertiesJson: v.string(),
+    occurredAt: v.number(),
+    receivedAt: v.number(),
+  })
+    .index("by_organization_source_env_event", ["organizationId", "source", "environment", "eventId"])
+    .index("by_organization_received", ["organizationId", "receivedAt"])
+    .index("by_profile_received", ["profileId", "receivedAt"]),
+
+  lifecycleIngressAudit: defineTable({
+    organizationId: v.id("organizations"),
+    integrationId: v.id("lifecycleIntegrationKeys"),
+    eventId: v.string(),
+    outcome: v.union(v.literal("accepted"), v.literal("duplicate")),
+    createdAt: v.number(),
+  }).index("by_organization_created", ["organizationId", "createdAt"]),
+
   mcpAudit: defineTable({
     organizationId: v.optional(v.id("organizations")),
     actorSubject: v.string(),
