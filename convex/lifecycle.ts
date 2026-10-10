@@ -184,7 +184,7 @@ export const ingest = mutation({
     // Consent events can arrive out of order. Older updates must not revive
     // an address that already opted out (nor undo a newer opt-in).
     const newConsentApplies = Boolean(consent && (!profile?.consentUpdatedAt ||
-      args.occurredAt >= profile.consentUpdatedAt));
+      args.occurredAt > profile.consentUpdatedAt));
     if (consent === "opt_in" && !(normalized.email || profile?.email)) {
       throw new Error("Explicit marketing opt-in requires a known email.");
     }

@@ -19,3 +19,8 @@ Marketing email, provider credentials, template rendering, unsubscribe endpoint,
 ## QA
 
 Run focused Node handler/predicate tests for tenant/RBAC isolation, cross-org segment referencing, campaign draft lifecycle, unknown/opt-out suppression, opt-in/out event provenance, out-of-order handling, replay safe automations, pause/active behavior, and modules disabled. TypeScript, targeted lint and production build. Then perform real nonproduction Clerk/Convex browser and HTTP tests for PR #8 and this stacked PR. QA approval precedes merges.
+
+**Important privacy detail:** If two consent events have the same source timestamp, the
+previous decision wins; tied opt-in must not override an existing opt-out.
+Out-of-order older events never reverse a newer choice. Opt-in without a known
+profile email is rejected.

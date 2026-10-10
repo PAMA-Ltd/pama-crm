@@ -187,6 +187,11 @@ test("only explicit and latest consent events update opt-in/out; old events cann
   profile=[...f.tables.lifecycleProfiles.values()][0];
   assert.equal(profile.marketingConsent,"opt_out");
   assert.equal(profile.consentUpdatedAt,baseTime);
+  await ingest.ingest._handler(f.ctx,event("same-time-agree","marketing_consent_updated",{
+    occurredAt:baseTime,propertiesJson:'{"consent":"opt_in"}',
+  }));
+  profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.marketingConsent,"opt_out"); // tie must fail closed
   const id=await segment(f);
   const audience=await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:id});
   assert.equal(audience.marketingEligible,0);
@@ -200,4 +205,43 @@ test("campaigns-only workspace can define and preview segments independently",as
   assert.equal(p.matched,0);
   await assert.rejects(actions.createAutomation._handler(f.ctx,{organizationId:f.a,
     name:"No",source:"pamastore",eventType:"order_paid",tag:"buyer"}),/module is disabled/);
+});
+
+test("segment preview marks incomplete scans and never silently claims full reach",async()=>{
+  const f=fixture();const id=await segment(f);
+  for(let i=0;i<501;i++) f.insert("lifecycleProfiles",{
+    organizationId:f.a,source:"pamastore",subjectId:"p"+i,
+    lastSeenAt:i,email:"user"+i+"@example.test",marketingConsent:"opt_in",
+  });
+  const audience=await actions.previewSegment._handler(f.ctx,{organizationId:f.a,segmentId:id});
+  assert.equal(audience.scanned,500);assert.equal(audience.marketingEligible,500);
+  assert.equal(audience.partial,true);
+});
+
+test("automation tag limits do not reject the source event or create extra tags",async()=>{
+  const f=fixture();
+  const id=await actions.createAutomation._handler(f.ctx,{organizationId:f.a,
+    name:"High tags",eventType:"order_paid",tag:"buyer"});
+  await actions.setAutomationStatus._handler(f.ctx,{organizationId:f.a,automationId:id,status:"active"});
+  f.insert("lifecycleProfiles",{organizationId:f.a,source:"pamastore",
+    subjectId:"buyer-001",email:"buyer@example.test",firstSeenAt:baseTime,
+    lastSeenAt:baseTime,tags:Array.from({length:20},(_,i)=>"tag"+i)});
+  const result=await ingest.ingest._handler(f.ctx,event("max-tags","order_paid"));
+  assert.equal(result.accepted,true);
+  const profile=[...f.tables.lifecycleProfiles.values()][0];
+  assert.equal(profile.tags.length,20);
+  assert.equal([...f.tables.lifecycleAutomationRuns.values()][0].outcome,"skipped_limit");
+});
+
+test("disabled automation module never runs rules, and missing email rejects opt-in",async()=>{
+  const f=fixture({modules:["lifecycle"]});
+  f.insert("lifecycleAutomations",{organizationId:f.a,name:"Disabled",eventType:"order_paid",
+    tag:"buyer",status:"active"});
+  await ingest.ingest._handler(f.ctx,event("tag-disabled","order_paid"));
+  assert.equal(f.tables.lifecycleAutomationRuns.size,0);
+  const withoutEmail=fixture();
+  await assert.rejects(ingest.ingest._handler(withoutEmail.ctx,
+    event("no-email","marketing_consent_updated",{
+      email:undefined,propertiesJson:'{"consent":"opt_in"}',
+    })),/requires a known email/);
 });
